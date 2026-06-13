@@ -1,0 +1,17 @@
+{
+  "name": "SubSentry",
+  "short_name": "SubSentry",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff7fb",
+  "theme_color": "#ff8fbd",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
