@@ -2,8 +2,6 @@
 
 SubSentry 是一个开源的 3x-ui 订阅客户管理面板，用来集中管理客户、节点、订阅链接、续费记录、流量状态、通知推送和操作日志。
 
-它适合正在使用 3x-ui 做订阅服务管理、但又希望有更清晰客户资产视图和到期提醒能力的个人、团队或工作室。
-
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](backend)
 [![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20Ant%20Design-1677ff.svg)](frontend)
@@ -28,19 +26,55 @@ SubSentry 是一个开源的 3x-ui 订阅客户管理面板，用来集中管理
 
 - 后端：FastAPI、SQLite/MySQL、Requests、WebAuthn
 - 前端：React、Vite、Ant Design、Axios、ECharts
-- 部署：Nginx、systemd、Linux 一键安装脚本
+- 部署：Nginx、systemd、Linux 一键安装脚本、宝塔面板手动反代部署
 
 ## 快速开始
 
 ### Linux 一键安装
 
-全新 Linux 服务器可以使用下面的命令自动安装依赖、构建前端、写入 `.env`、配置 systemd 和 Nginx。
+全新 Linux 服务器可以使用下面的一行命令自动安装依赖、构建前端、写入 `.env`、配置 systemd 和 Nginx。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-linux.sh | sudo env SUBSENTRY_REPO_URL=https://github.com/YuWan-030/subsentry-public.git bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-linux.sh)
 ```
 
-安装完成后，根据脚本输出的地址访问面板。第一次打开会进入 `/install` 安装向导，用于创建管理员账号和配置站点信息。
+完全使用默认值安装：
+
+```bash
+sudo SUBSENTRY_ASSUME_YES=true bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-linux.sh)
+```
+
+默认配置：
+
+- 安装目录：`/opt/subsentry`
+- 后端端口：`4398`
+- HTTP 访问端口：`8080`
+- 数据库：SQLite
+- 仓库地址：`https://github.com/YuWan-030/subsentry-public.git`
+
+安装完成后访问脚本输出的地址，第一次打开会进入 `/install` 安装向导，用于创建管理员账号、选择数据库并配置站点信息。
+
+### 宝塔面板安装
+
+如果服务器使用宝塔面板，建议让脚本只安装 SubSentry 后端和前端构建产物，不接管 Nginx 配置，然后在宝塔里创建网站和反向代理。
+
+```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-bt.sh)
+```
+
+完全使用默认值安装：
+
+```bash
+sudo SUBSENTRY_ASSUME_YES=true bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-bt.sh)
+```
+
+脚本完成后，在宝塔面板中：
+
+1. 新建网站，根目录设置为 `/opt/subsentry/app/frontend/dist`。
+2. 添加反向代理，代理目录填 `/api/`，目标 URL 填 `http://127.0.0.1:4398`。
+3. 在网站伪静态中加入 `try_files $uri $uri/ /index.html;`，避免刷新前端路由时 404。
+4. 访问你的域名并打开 `/install` 完成首次安装。
+5. 如需 HTTPS、证书、域名跳转、防火墙放行，请在宝塔面板中按你的站点策略配置。
 
 ### 本地开发运行
 
@@ -53,9 +87,7 @@ cp .env.example .env
 启动后端：
 
 ```bash
-cd backend
-pip install -r requirements.txt
-cd ..
+pip install -r backend/requirements.txt
 uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 4398
 ```
 
@@ -66,8 +98,6 @@ cd frontend
 npm install
 VITE_API_BASE_URL=http://127.0.0.1:4398 npm run dev
 ```
-
-浏览器打开 Vite 输出的地址。全新数据库会自动跳转到安装向导。
 
 ## 环境要求
 
@@ -113,31 +143,15 @@ SUBSENTRY_PUBLIC_SUBSCRIPTION_BASE_URL=http://your-domain.example.com:10883
 SUBSENTRY_DEFAULT_WEBHOOK_URL=
 ```
 
-## 生产部署建议
+## 常用命令
 
 ```bash
-cd frontend
-VITE_API_BASE_URL=https://your-domain.example.com npm run build
+systemctl status subsentry
+journalctl -u subsentry -f
+systemctl restart subsentry
 ```
 
-```bash
-uvicorn backend.app.main:app --host 127.0.0.1 --port 4398
-```
-
-建议使用 Nginx 或 Caddy 对外提供 HTTPS，并将 `/api/` 反向代理到后端。
-
-## 使用流程
-
-1. 进入 `/install` 创建第一个管理员账号。
-2. 在“节点集群”中添加 3x-ui 节点，填写面板地址、端口、API Token 和订阅路径。
-3. 测试节点连接，确认可以读取入站和订阅配置。
-4. 在“用户管理”中创建普通用户或客户经理账号。
-5. 在“客户管理”中添加客户，选择节点、入站、到期时间、流量和续费价格。
-6. 在客户详情中查看订阅链接、续费记录、审计记录和通知历史。
-7. 在“系统设置”中配置 Webhook、通知模板、推送策略、公告和备案号。
-8. 在“系统健康”和“日志中心”中查看自动任务、节点状态和通知结果。
-
-## 开发
+## 开发检查
 
 ```bash
 python -m compileall backend
@@ -149,7 +163,7 @@ npm run build
 
 - 不要提交真实 `.env`、数据库文件、管理员密码、Webhook Key、OnAuth Secret 或 3x-ui API Token。
 - 生产环境必须修改 `SUBSENTRY_SECRET_KEY` 和 `SUBSENTRY_CRON_TOKEN`。
-- 建议通过 HTTPS 暴露面板，不要直接把后端端口裸露到公网。
+- 建议通过 HTTPS 暴露面板，不要直接把后端端口暴露到公网。
 - 请定期备份数据库。
 - 给 3x-ui API Token 授予最小必要权限。
 

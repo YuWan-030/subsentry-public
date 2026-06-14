@@ -3,11 +3,15 @@ set -Eeuo pipefail
 
 APP_NAME="subsentry"
 SERVICE_NAME="subsentry"
-DEFAULT_INSTALL_DIR="/opt/subsentry"
-DEFAULT_BACKEND_PORT="4398"
-DEFAULT_HTTP_PORT="80"
-DEFAULT_DB_TYPE="sqlite"
+DEFAULT_INSTALL_DIR="${SUBSENTRY_DEFAULT_INSTALL_DIR:-/opt/subsentry}"
+DEFAULT_BACKEND_PORT="${SUBSENTRY_BACKEND_PORT:-4398}"
+DEFAULT_HTTP_PORT="${SUBSENTRY_HTTP_PORT:-8080}"
+DEFAULT_DB_TYPE="${SUBSENTRY_INSTALL_DB_TYPE:-sqlite}"
+DEFAULT_RUN_USER="${SUBSENTRY_RUN_USER:-$APP_NAME}"
 DEFAULT_REPO_URL="${SUBSENTRY_REPO_URL:-https://github.com/YuWan-030/subsentry-public.git}"
+DEFAULT_ARCHIVE_URL="${SUBSENTRY_ARCHIVE_URL:-https://github.com/YuWan-030/subsentry-public/archive/refs/heads/main.tar.gz}"
+INSTALL_NGINX="${SUBSENTRY_INSTALL_NGINX:-true}"
+ASSUME_YES="${SUBSENTRY_ASSUME_YES:-false}"
 
 TTY="/dev/tty"
 
@@ -28,6 +32,10 @@ prompt() {
   local label="$1"
   local default_value="$2"
   local value=""
+  if [[ "$ASSUME_YES" == "true" ]]; then
+    printf '%s' "$default_value"
+    return
+  fi
   if [[ -r "$TTY" ]]; then
     read -r -p "$label [$default_value]: " value < "$TTY" || true
   fi
@@ -62,20 +70,30 @@ detect_pkg_manager() {
 }
 
 install_base_packages() {
+  local packages
   log "Installing system dependencies..."
   case "$PKG_MANAGER" in
     apt)
       $SUDO apt-get update
-      $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        ca-certificates curl git nginx openssl python3 python3-pip python3-venv rsync
+      packages="ca-certificates curl git openssl python3 python3-pip python3-venv rsync tar"
+      if [[ "$INSTALL_NGINX" == "true" ]]; then
+        packages="$packages nginx"
+      fi
+      $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y $packages
       ;;
     dnf)
-      $SUDO dnf install -y \
-        ca-certificates curl git nginx openssl python3 python3-pip rsync
+      packages="ca-certificates curl git openssl python3 python3-pip rsync tar"
+      if [[ "$INSTALL_NGINX" == "true" ]]; then
+        packages="$packages nginx"
+      fi
+      $SUDO dnf install -y $packages
       ;;
     yum)
-      $SUDO yum install -y \
-        ca-certificates curl git nginx openssl python3 python3-pip rsync
+      packages="ca-certificates curl git openssl python3 python3-pip rsync tar"
+      if [[ "$INSTALL_NGINX" == "true" ]]; then
+        packages="$packages nginx"
+      fi
+      $SUDO yum install -y $packages
       ;;
   esac
 }
@@ -127,13 +145,32 @@ prepare_source() {
     return
   fi
 
-  if [[ -z "$REPO_URL" ]]; then
-    die "Repository URL is required when the installer is not run inside a SubSentry checkout. Set SUBSENTRY_REPO_URL=https://github.com/YuWan-030/subsentry-public.git before running."
-  fi
-
   SOURCE_DIR="$(mktemp -d)"
   log "Cloning $REPO_URL..."
-  git clone --depth 1 "$REPO_URL" "$SOURCE_DIR"
+  for attempt in 1 2 3; do
+    if git -c http.version=HTTP/1.1 clone --depth 1 "$REPO_URL" "$SOURCE_DIR"; then
+      return
+    fi
+    warn "Clone failed, retrying ($attempt/3)..."
+    rm -rf "$SOURCE_DIR"
+    SOURCE_DIR="$(mktemp -d)"
+    sleep 3
+  done
+
+  warn "Git clone failed. Falling back to source archive download..."
+  local archive_file
+  archive_file="$(mktemp)"
+  for attempt in 1 2 3; do
+    if curl -fL --retry 3 --retry-delay 2 "$DEFAULT_ARCHIVE_URL" -o "$archive_file"; then
+      tar -xzf "$archive_file" --strip-components=1 -C "$SOURCE_DIR"
+      rm -f "$archive_file"
+      return
+    fi
+    warn "Archive download failed, retrying ($attempt/3)..."
+    sleep 3
+  done
+  rm -f "$archive_file"
+  die "Failed to download source from $REPO_URL or $DEFAULT_ARCHIVE_URL"
 }
 
 sync_app_files() {
@@ -272,12 +309,15 @@ start_services() {
   log "Starting services..."
   $SUDO systemctl daemon-reload
   $SUDO systemctl enable --now "$SERVICE_NAME"
-  $SUDO systemctl enable --now nginx
-  $SUDO systemctl restart nginx
+  if [[ "$INSTALL_NGINX" == "true" ]]; then
+    $SUDO systemctl enable --now nginx
+    $SUDO systemctl restart nginx
+  fi
 }
 
 print_summary() {
-  cat <<EOF
+  if [[ "$INSTALL_NGINX" == "true" ]]; then
+    cat <<EOF
 
 SubSentry has been installed.
 
@@ -291,6 +331,38 @@ Open the panel and finish the first-run installer:
 $PUBLIC_URL/install
 
 EOF
+  else
+    cat <<EOF
+
+SubSentry backend has been installed for aaPanel/BT Panel.
+
+Backend URL: http://127.0.0.1:$BACKEND_PORT
+Frontend root: $APP_DIR/frontend/dist
+Install path: $APP_DIR
+Data path: $DATA_DIR
+Service: systemctl status $SERVICE_NAME
+Logs: journalctl -u $SERVICE_NAME -f
+
+In aaPanel/BT Panel:
+1. Add a website and set its document root to: $APP_DIR/frontend/dist
+2. Add reverse proxy /api/ to: http://127.0.0.1:$BACKEND_PORT
+3. Visit your site and open /install to finish the first-run installer.
+
+EOF
+  fi
+}
+
+default_public_url() {
+  local server_ip="$1"
+  local http_port="$2"
+  local host="${server_ip:-127.0.0.1}"
+  if [[ "$INSTALL_NGINX" == "true" && "$http_port" != "80" ]]; then
+    printf 'http://%s:%s' "$host" "$http_port"
+  elif [[ "$INSTALL_NGINX" == "true" ]]; then
+    printf 'http://%s' "$host"
+  else
+    printf 'http://%s' "$host"
+  fi
 }
 
 main() {
@@ -302,12 +374,16 @@ main() {
   APP_DIR="$INSTALL_DIR/app"
   DATA_DIR="$INSTALL_DIR/data"
   BACKEND_PORT="$(prompt 'Backend port' "$DEFAULT_BACKEND_PORT")"
-  HTTP_PORT="$(prompt 'Public HTTP port' "$DEFAULT_HTTP_PORT")"
+  if [[ "$INSTALL_NGINX" == "true" ]]; then
+    HTTP_PORT="$(prompt 'Public HTTP port' "$DEFAULT_HTTP_PORT")"
+  else
+    HTTP_PORT=""
+  fi
   DB_TYPE="$(prompt 'Database type' "$DEFAULT_DB_TYPE")"
-  RUN_USER="$(prompt 'Runtime user' "$APP_NAME")"
-  REPO_URL="$(prompt 'Git repository URL, leave empty when running inside the repo' "$DEFAULT_REPO_URL")"
+  RUN_USER="$(prompt 'Runtime user' "$DEFAULT_RUN_USER")"
+  REPO_URL="$DEFAULT_REPO_URL"
   SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
-  PUBLIC_URL="$(prompt 'Public site URL' "http://${SERVER_IP:-127.0.0.1}")"
+  PUBLIC_URL="$(prompt 'Public site URL' "$(default_public_url "$SERVER_IP" "${HTTP_PORT:-80}")")"
 
   [[ "$DB_TYPE" == "sqlite" ]] || die "The one-click installer defaults to SQLite. Use the web installer after startup to switch to MySQL."
 
@@ -320,7 +396,9 @@ main() {
   install_python_deps
   build_frontend
   write_systemd_service
-  write_nginx_site
+  if [[ "$INSTALL_NGINX" == "true" ]]; then
+    write_nginx_site
+  fi
   fix_permissions
   start_services
   print_summary
