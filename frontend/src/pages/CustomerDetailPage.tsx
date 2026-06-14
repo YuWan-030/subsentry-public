@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Grid, Input, InputNumber, List, Modal, Popconfirm, Row, Select, Space, Switch, Table, Tag, Timeline, Typography } from "antd";
+import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Grid, Input, InputNumber, List, Modal, Popconfirm, Row, Select, Space, Switch, Table, Tag, Typography } from "antd";
 import type { Dayjs } from "dayjs";
 import {
   fetchCustomerAuditByAction,
@@ -78,6 +78,21 @@ const AUDIT_ACTIONS: Array<{ label: string; value?: string }> = [
   { label: "续费", value: "续费" },
   { label: "重置流量", value: "重置流量" },
 ];
+
+function getAuditMarkerClass(action: string) {
+  switch (action) {
+    case "删除":
+      return "customer-audit-marker-danger";
+    case "新增":
+      return "customer-audit-marker-primary";
+    case "续费":
+      return "customer-audit-marker-success";
+    case "重置流量":
+      return "customer-audit-marker-purple";
+    default:
+      return "customer-audit-marker-default";
+  }
+}
 
 function getStatusMeta(customer: CustomerRow | null): CustomerStatusMeta {
   if (!customer) {
@@ -351,8 +366,18 @@ export default function CustomerDetailPage() {
         .customer-detail-actions .detail-action-button { border-radius: 12px; }
         .customer-audit-card .ant-card-body { padding-right: 12px; }
         .customer-audit-scroll { max-height: min(50vh, 520px); overflow-y: auto; overflow-x: hidden; padding-right: 24px; scrollbar-gutter: stable; }
-        .customer-audit-scroll .ant-timeline { margin-bottom: 0; padding-left: 6px; }
-        .customer-audit-scroll .ant-timeline-item-content { margin-inline-start: 34px; }
+        .customer-audit-list { display: flex; flex-direction: column; }
+        .customer-audit-item { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 22px; position: relative; padding-bottom: 28px; }
+        .customer-audit-item:last-child { padding-bottom: 0; }
+        .customer-audit-rail { position: relative; min-height: 100%; }
+        .customer-audit-rail::after { content: ""; position: absolute; top: 21px; bottom: -28px; left: 9px; width: 1px; background: rgba(148, 163, 184, 0.25); }
+        .customer-audit-item:last-child .customer-audit-rail::after { display: none; }
+        .customer-audit-marker { position: absolute; top: 5px; left: 4px; z-index: 1; width: 11px; height: 11px; border: 3px solid #c4c9d1; border-radius: 999px; background: #fff; box-sizing: border-box; }
+        .customer-audit-marker-primary { border-color: #5b8ff9; }
+        .customer-audit-marker-success { border-color: #52c41a; }
+        .customer-audit-marker-danger { border-color: #ff4d4f; }
+        .customer-audit-marker-purple { border-color: #9254de; }
+        .customer-audit-content { min-width: 0; }
         .customer-audit-row-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; min-width: 0; line-height: 22px; }
         .customer-audit-row-action { display: inline-flex; align-items: center; min-width: 0; min-height: 22px; font-weight: 600; }
         .customer-audit-row-time { white-space: nowrap; color: #64748b; font-size: 12px; }
@@ -489,7 +514,23 @@ export default function CustomerDetailPage() {
           >
             <div className="customer-audit-scroll">
               {audits.length ? (
-                <Timeline items={audits.map((item) => ({ color: item.action === "删除" ? "red" : item.action === "新增" ? "blue" : item.action === "续费" ? "green" : item.action === "重置流量" ? "purple" : "gray", children: <div style={{ paddingBottom: 8 }}><div className="customer-audit-row-head"><span className="customer-audit-row-action">{item.action}</span><span className="customer-audit-row-time">{item.created_at}</span></div><div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>操作人：{item.actor}</div><div style={{ marginTop: 8, lineHeight: 1.7 }}>{item.change_summary}</div></div> }))} />
+                <div className="customer-audit-list">
+                  {audits.map((item) => (
+                    <div className="customer-audit-item" key={item.id}>
+                      <div className="customer-audit-rail">
+                        <span className={`customer-audit-marker ${getAuditMarkerClass(item.action)}`} />
+                      </div>
+                      <div className="customer-audit-content">
+                        <div className="customer-audit-row-head">
+                          <span className="customer-audit-row-action">{item.action}</span>
+                          <span className="customer-audit-row-time">{item.created_at}</span>
+                        </div>
+                        <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>操作人：{item.actor}</div>
+                        <div style={{ marginTop: 8, lineHeight: 1.7 }}>{item.change_summary}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审计记录" />
               )}
