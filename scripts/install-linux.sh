@@ -23,6 +23,10 @@ warn() {
   printf '\033[1;33m[SubSentry]\033[0m %s\n' "$*"
 }
 
+success() {
+  printf '\033[1;32m[SubSentry]\033[0m %s\n' "$*"
+}
+
 die() {
   printf '\033[1;31m[SubSentry]\033[0m %s\n' "$*" >&2
   exit 1
@@ -358,23 +362,20 @@ print_summary() {
 
 SubSentry has been installed.
 
-Panel URL: $PUBLIC_URL
 Install path: $APP_DIR
 Data path: $DATA_DIR
 Service: systemctl status $SERVICE_NAME
 Logs: journalctl -u $SERVICE_NAME -f
 
-Open the panel and finish the first-run installer:
-$PUBLIC_URL/install
-
 EOF
+    success "Panel URL: $PUBLIC_URL"
+    success "First-run installer: $PUBLIC_URL/install"
+    printf '\n'
   else
     cat <<EOF
 
 SubSentry backend has been installed for aaPanel/BT Panel.
 
-Backend URL: http://127.0.0.1:$BACKEND_PORT
-Frontend root: $APP_DIR/frontend/dist
 Install path: $APP_DIR
 Data path: $DATA_DIR
 Service: systemctl status $SERVICE_NAME
@@ -386,6 +387,10 @@ In aaPanel/BT Panel:
 3. Visit your site and open /install to finish the first-run installer.
 
 EOF
+    success "Backend URL: http://127.0.0.1:$BACKEND_PORT"
+    success "Frontend root: $APP_DIR/frontend/dist"
+    success "After configuring aaPanel/BT Panel, open: http://your-domain/install"
+    printf '\n'
   fi
 }
 
