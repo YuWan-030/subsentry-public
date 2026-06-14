@@ -35,13 +35,19 @@ SubSentry 是一个开源的 3x-ui 订阅客户管理面板，用来集中管理
 全新 Linux 服务器可以使用下面的一行命令自动安装依赖、构建前端、写入 `.env`、配置 systemd 和 Nginx。
 
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-linux.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-linux.sh)
 ```
 
 完全使用默认值安装：
 
 ```bash
-sudo SUBSENTRY_ASSUME_YES=true bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-linux.sh)
+SUBSENTRY_ASSUME_YES=true bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-linux.sh)
+```
+
+如果当前系统不支持 process substitution，可以使用兼容写法：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-linux.sh | sudo bash
 ```
 
 默认配置：
@@ -61,13 +67,19 @@ sudo SUBSENTRY_ASSUME_YES=true bash <(curl -fsSL https://raw.githubusercontent.c
 如果服务器使用宝塔面板，建议让脚本只安装 SubSentry 后端和前端构建产物，不接管 Nginx 配置，然后在宝塔里创建网站和反向代理。
 
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-bt.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-bt.sh)
 ```
 
 完全使用默认值安装：
 
 ```bash
-sudo SUBSENTRY_ASSUME_YES=true bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-bt.sh)
+SUBSENTRY_ASSUME_YES=true bash <(curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-bt.sh)
+```
+
+宝塔版兼容写法：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/YuWan-030/subsentry-public/main/scripts/install-bt.sh | sudo bash
 ```
 
 脚本完成后，在宝塔面板中：
