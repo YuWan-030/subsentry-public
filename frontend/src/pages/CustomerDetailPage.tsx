@@ -364,7 +364,12 @@ export default function CustomerDetailPage() {
         .joined-price-input .ant-select-focused .ant-select-selector { position: relative; z-index: 1; }
         .customer-detail-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
         .customer-detail-actions .detail-action-button { border-radius: 12px; }
+        .customer-audit-card .ant-card-head { padding: 0 20px; }
+        .customer-audit-card .ant-card-head-title { padding: 16px 0 12px; }
         .customer-audit-card .ant-card-body { padding-right: 12px; }
+        .customer-audit-titlebar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .customer-audit-title { font-weight: 600; }
+        .customer-audit-filter-strip { display: flex; flex-wrap: wrap; gap: 8px; }
         .customer-audit-scroll { max-height: min(50vh, 520px); overflow-y: auto; overflow-x: hidden; padding-right: 24px; scrollbar-gutter: stable; }
         .customer-audit-list { display: flex; flex-direction: column; }
         .customer-audit-item { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 22px; position: relative; padding-bottom: 28px; }
@@ -391,6 +396,13 @@ export default function CustomerDetailPage() {
           .customer-detail-actions .detail-action-webhook { order: 5; }
           .customer-detail-actions .detail-action-refresh { order: 6; }
           .customer-detail-actions .detail-action-back { order: 7; grid-column: 1 / -1; }
+          .customer-audit-card .ant-card-head { padding: 0 16px; }
+          .customer-audit-card .ant-card-head-title { padding: 14px 0 10px; }
+          .customer-audit-card .ant-card-body { padding-top: 12px; }
+          .customer-audit-titlebar { display: grid; grid-template-columns: 1fr; align-items: stretch; gap: 10px; }
+          .customer-audit-filter-strip { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding: 0 2px 6px 0; margin-bottom: -4px; scrollbar-width: none; }
+          .customer-audit-filter-strip::-webkit-scrollbar { display: none; }
+          .customer-audit-filter-strip .ant-btn { flex: 0 0 auto; }
           .customer-audit-scroll { max-height: 58vh; }
         }
       `}</style>
@@ -510,7 +522,7 @@ export default function CustomerDetailPage() {
             className="customer-audit-card"
             bordered={false}
             style={{ borderRadius: 24, height: "100%" }}
-            title={<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}><span style={{ fontWeight: 600 }}>审计记录</span><Space wrap>{AUDIT_ACTIONS.map((item) => <Button key={String(item.value ?? "all")} type={auditAction === item.value ? "primary" : "default"} size="small" onClick={() => setAuditAction(item.value)}>{item.label}</Button>)}</Space></div>}
+            title={<div className="customer-audit-titlebar"><span className="customer-audit-title">审计记录</span><div className="customer-audit-filter-strip">{AUDIT_ACTIONS.map((item) => <Button key={String(item.value ?? "all")} type={auditAction === item.value ? "primary" : "default"} size="small" onClick={() => setAuditAction(item.value)}>{item.label}</Button>)}</div></div>}
           >
             <div className="customer-audit-scroll">
               {audits.length ? (
