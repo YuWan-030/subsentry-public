@@ -19,6 +19,12 @@ def _placeholder(db_type: str) -> str:
     return "%s" if db_type == "mysql" else "?"
 
 
+def _ensure_mysql_index(cursor, table_name: str, index_name: str, ddl: str) -> None:
+    cursor.execute(f"SHOW INDEX FROM {table_name} WHERE Key_name = %s", (index_name,))
+    if not cursor.fetchone():
+        cursor.execute(ddl)
+
+
 def get_connection(settings: Settings):
     if settings.db_type == "mysql":
         if pymysql is None:
@@ -246,6 +252,7 @@ def init_db(settings: Settings) -> None:
                 cursor.execute("SHOW COLUMNS FROM customer_audit_logs LIKE 'remote_email'")
                 if not cursor.fetchone():
                     cursor.execute("ALTER TABLE customer_audit_logs ADD COLUMN remote_email VARCHAR(255) NULL AFTER node_id;")
+                _ensure_mysql_index(cursor, "customer_audit_logs", "idx_customer_audit_lookup", "CREATE INDEX idx_customer_audit_lookup ON customer_audit_logs (node_id, remote_email, action, id)")
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS customer_renewal_logs (
@@ -653,6 +660,8 @@ def init_db(settings: Settings) -> None:
                 conn.execute("ALTER TABLE customer_audit_logs ADD COLUMN node_id INTEGER;")
             if "remote_email" not in audit_columns:
                 conn.execute("ALTER TABLE customer_audit_logs ADD COLUMN remote_email TEXT;")
+
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_customer_audit_lookup ON customer_audit_logs (node_id, remote_email, action, id);")
 
             renewal_columns = [row[1] for row in conn.execute("PRAGMA table_info(customer_renewal_logs)").fetchall()]
             if "node_id" not in renewal_columns:

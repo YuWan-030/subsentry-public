@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Grid, Input, InputNumber, List, Modal, Popconfirm, Row, Select, Space, Switch, Table, Tag, Timeline, Typography } from "antd";
 import type { Dayjs } from "dayjs";
@@ -158,6 +158,7 @@ export default function CustomerDetailPage() {
   const [renewals, setRenewals] = useState<CustomerRenewalRow[]>([]);
   const [notificationLogs, setNotificationLogs] = useState<NotificationLogRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [renewOpen, setRenewOpen] = useState(false);
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
@@ -178,21 +179,58 @@ export default function CustomerDetailPage() {
   const [renewCustomDate, setRenewCustomDate] = useState<Dayjs | null>(null);
   const [editForm] = Form.useForm<EditFormValues>();
   const [renewForm] = Form.useForm<RenewFormValues>();
+  const auditCacheRef = useRef(new Map<string, CustomerAuditRow[]>());
+  const auditActionRef = useRef<string | undefined>(undefined);
 
-  const loadData = async (showSuccess = false) => {
+  const auditCacheKey = useCallback((action?: string) => `${customerId}:${action || "all"}`, [customerId]);
+
+  const clearAuditCache = useCallback(() => {
+    Array.from(auditCacheRef.current.keys()).forEach((key) => {
+      if (key.startsWith(`${customerId}:`)) {
+        auditCacheRef.current.delete(key);
+      }
+    });
+  }, [customerId]);
+
+  const loadAuditRows = useCallback(async (action?: string, force = false) => {
     if (!customerId) {
       return;
     }
 
+    const cacheKey = auditCacheKey(action);
+    const cachedRows = auditCacheRef.current.get(cacheKey);
+    if (!force && cachedRows) {
+      setAudits(cachedRows);
+      return;
+    }
+
+    setAuditLoading(true);
+    try {
+      const rows = await fetchCustomerAuditByAction(customerId, action);
+      auditCacheRef.current.set(cacheKey, rows);
+      setAudits(rows);
+    } catch (error: any) {
+      notifyActionError("customer-audit-load", extractErrorMessage(error, "加载审计记录失败"));
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [auditCacheKey, customerId]);
+
+  const loadData = useCallback(async (showSuccess = false, forceAudit = false) => {
+    if (!customerId) {
+      return;
+    }
+
+    if (forceAudit) {
+      clearAuditCache();
+    }
     setLoading(true);
     try {
-      const [detail, auditRows, renewalRows] = await Promise.all([
+      const [detail, renewalRows] = await Promise.all([
         fetchCustomerDetail(customerId),
-        fetchCustomerAuditByAction(customerId, auditAction),
         fetchCustomerRenewals(customerId),
       ]);
       setCustomer(detail);
-      setAudits(auditRows);
       setRenewals(renewalRows);
       setInboundOptions(
         ((detail.inbounds || []) as Array<{ id: number; remark: string; protocol: string; port: number }>).map((inbound) => ({
@@ -208,12 +246,17 @@ export default function CustomerDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+    await loadAuditRows(auditActionRef.current, forceAudit);
+  }, [clearAuditCache, customerId, loadAuditRows]);
 
   useEffect(() => {
     void loadData(false);
-  }, [customerId, auditAction]);
+  }, [loadData]);
 
+  useEffect(() => {
+    auditActionRef.current = auditAction;
+    void loadAuditRows(auditAction);
+  }, [auditAction, loadAuditRows]);
   const loadNotificationLogs = async () => {
     if (!customerId) {
       return;
@@ -247,7 +290,7 @@ export default function CustomerDetailPage() {
       notifyActionLoading("customer-reset-traffic", "重置客户流量中...");
       const result = await resetCustomerTraffic(customerId);
       notifyActionSuccess("customer-reset-traffic", result.message || "客户流量已重置");
-      await loadData(false);
+      await loadData(false, true);
     } catch (error: any) {
       notifyActionError("customer-reset-traffic", extractErrorMessage(error, "重置客户流量失败"));
     } finally {
@@ -430,6 +473,7 @@ export default function CustomerDetailPage() {
         </Col>
         <Col xs={24} xl={11}>
           <Card
+            loading={auditLoading}
             bordered={false}
             style={{ borderRadius: 24, height: "100%" }}
             title={<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}><span style={{ fontWeight: 600 }}>审计记录</span><Space wrap>{AUDIT_ACTIONS.map((item) => <Button key={String(item.value ?? "all")} type={auditAction === item.value ? "primary" : "default"} size="small" onClick={() => setAuditAction(item.value)}>{item.label}</Button>)}</Space></div>}
@@ -531,7 +575,7 @@ export default function CustomerDetailPage() {
             });
             notifyActionSuccess("customer-detail-update", "客户已更新");
             setEditOpen(false);
-            await loadData(false);
+            await loadData(false, true);
           } catch (error: any) {
             notifyActionError("customer-detail-update", extractErrorMessage(error, "更新失败"));
           } finally {
@@ -650,7 +694,7 @@ export default function CustomerDetailPage() {
             const result = await renewCustomer(customerId, { renew_days: renewDays, renew_price: values.renew_price });
             notifyActionSuccess("customer-renew", result.message || "续费成功");
             setRenewOpen(false);
-            await loadData(false);
+            await loadData(false, true);
           } catch (error: any) {
             notifyActionError("customer-renew", extractErrorMessage(error, "续费失败"));
           } finally {

@@ -132,11 +132,8 @@ def reset_traffic(request: Request, customer_id: str, username: str = Depends(re
 def audit(request: Request, customer_id: str, action: str | None = None, username: str = Depends(require_login)):
     settings: Settings = request.app.state.settings
     actor_role = str(request.session.get(SESSION_ROLE_KEY) or "user")
-    rows = customer_audit_logs(settings, customer_id, actor=username, actor_role=actor_role)
-    if action:
-        rows = [r for r in rows if r.get("action") == action]
+    rows = customer_audit_logs(settings, customer_id, action=action or "", actor=username, actor_role=actor_role)
     return {"success": True, "data": rows}
-
 
 @router.post("/{customer_id:path}/test-webhook")
 def webhook_test(request: Request, customer_id: str, username: str = Depends(require_login)):

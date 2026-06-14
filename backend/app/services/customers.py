@@ -996,22 +996,26 @@ def delete_customer(settings: Settings, customer_id: str, actor: str, actor_role
     return {"success": True, "message": "客户已删除"}
 
 
-def customer_audit_logs(settings: Settings, customer_id: str, *, actor: str = "", actor_role: str = "admin") -> List[Dict[str, Any]]:
+def customer_audit_logs(settings: Settings, customer_id: str, *, action: str = "", actor: str = "", actor_role: str = "admin") -> List[Dict[str, Any]]:
     node_id, remote_email = _split_customer_id(customer_id)
     profile = _get_profile(settings, node_id, remote_email)
     _require_customer_access(settings, profile, actor, actor_role)
+    conditions = ["node_id = ?", "remote_email = ?"]
+    params: List[Any] = [node_id, remote_email]
+    if action:
+        conditions.append("action = ?")
+        params.append(action)
     return query(
         settings,
-        """
+        f"""
         SELECT id, customer_name, action, actor, change_summary, created_at
         FROM customer_audit_logs
-        WHERE node_id = ? AND remote_email = ?
+        WHERE {" AND ".join(conditions)}
         ORDER BY id DESC
         LIMIT 20
         """,
-        (node_id, remote_email),
+        tuple(params),
     )
-
 
 def process_customer_renew(settings: Settings, customer_id: str, days_to_add: int, new_price: str, actor: str, actor_role: str = "admin") -> Dict[str, Any]:
     node_id, remote_email = _split_customer_id(customer_id)
