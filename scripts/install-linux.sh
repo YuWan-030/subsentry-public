@@ -69,6 +69,40 @@ detect_pkg_manager() {
   fi
 }
 
+port_in_use() {
+  local port="$1"
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltn "( sport = :$port )" 2>/dev/null | awk 'NR > 1 { found = 1 } END { exit found ? 0 : 1 }'
+    return
+  fi
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+    return
+  fi
+  return 1
+}
+
+next_available_port() {
+  local port="$1"
+  while port_in_use "$port"; do
+    port=$((port + 1))
+  done
+  printf '%s' "$port"
+}
+
+normalize_port() {
+  local label="$1"
+  local requested="$2"
+  local resolved
+  [[ "$requested" =~ ^[0-9]+$ ]] || die "$label must be a number."
+  [[ "$requested" -ge 1 && "$requested" -le 65535 ]] || die "$label must be between 1 and 65535."
+  resolved="$(next_available_port "$requested")"
+  if [[ "$resolved" != "$requested" ]]; then
+    warn "$label $requested is already in use. Using $resolved instead."
+  fi
+  printf '%s' "$resolved"
+}
+
 install_base_packages() {
   local packages
   log "Installing system dependencies..."
@@ -277,6 +311,8 @@ server {
 
     client_max_body_size 20m;
 
+    error_page 500 502 503 504 /index.html;
+
     location /api/ {
         proxy_pass http://127.0.0.1:$BACKEND_PORT;
         proxy_http_version 1.1;
@@ -301,6 +337,7 @@ EOF
 fix_permissions() {
   log "Fixing permissions..."
   $SUDO chown -R "$RUN_USER:$RUN_USER" "$INSTALL_DIR"
+  $SUDO chmod 755 "$INSTALL_DIR" "$APP_DIR" "$APP_DIR/frontend" "$APP_DIR/frontend/dist"
   $SUDO chmod 640 "$APP_DIR/.env"
   $SUDO chmod 750 "$DATA_DIR"
 }
@@ -374,8 +411,10 @@ main() {
   APP_DIR="$INSTALL_DIR/app"
   DATA_DIR="$INSTALL_DIR/data"
   BACKEND_PORT="$(prompt 'Backend port' "$DEFAULT_BACKEND_PORT")"
+  BACKEND_PORT="$(normalize_port 'Backend port' "$BACKEND_PORT")"
   if [[ "$INSTALL_NGINX" == "true" ]]; then
     HTTP_PORT="$(prompt 'Public HTTP port' "$DEFAULT_HTTP_PORT")"
+    HTTP_PORT="$(normalize_port 'Public HTTP port' "$HTTP_PORT")"
   else
     HTTP_PORT=""
   fi

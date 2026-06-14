@@ -52,6 +52,8 @@ sudo SUBSENTRY_ASSUME_YES=true bash <(curl -fsSL https://raw.githubusercontent.c
 - 数据库：SQLite
 - 仓库地址：`https://github.com/YuWan-030/subsentry-public.git`
 
+如果默认端口已被占用，脚本会自动向后查找可用端口，例如 `8080` 被占用时会尝试 `8081`。
+
 安装完成后访问脚本输出的地址，第一次打开会进入 `/install` 安装向导，用于创建管理员账号、选择数据库并配置站点信息。
 
 ### 宝塔面板安装
