@@ -349,6 +349,9 @@ export default function CustomerDetailPage() {
         .joined-price-input .ant-select-focused .ant-select-selector { position: relative; z-index: 1; }
         .customer-detail-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
         .customer-detail-actions .detail-action-button { border-radius: 12px; }
+        .customer-audit-card .ant-card-body { padding-right: 12px; }
+        .customer-audit-scroll { max-height: min(50vh, 520px); overflow-y: auto; overflow-x: hidden; padding-right: 8px; }
+        .customer-audit-scroll .ant-timeline { margin-bottom: 0; }
         @media (max-width: 767px) {
           .customer-detail-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
           .customer-detail-actions .detail-action-button { width: 100%; min-width: 0; padding-inline: 8px; }
@@ -359,6 +362,7 @@ export default function CustomerDetailPage() {
           .customer-detail-actions .detail-action-webhook { order: 5; }
           .customer-detail-actions .detail-action-refresh { order: 6; }
           .customer-detail-actions .detail-action-back { order: 7; grid-column: 1 / -1; }
+          .customer-audit-scroll { max-height: 58vh; }
         }
       `}</style>
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
@@ -474,15 +478,18 @@ export default function CustomerDetailPage() {
         <Col xs={24} xl={11}>
           <Card
             loading={auditLoading}
+            className="customer-audit-card"
             bordered={false}
             style={{ borderRadius: 24, height: "100%" }}
             title={<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}><span style={{ fontWeight: 600 }}>审计记录</span><Space wrap>{AUDIT_ACTIONS.map((item) => <Button key={String(item.value ?? "all")} type={auditAction === item.value ? "primary" : "default"} size="small" onClick={() => setAuditAction(item.value)}>{item.label}</Button>)}</Space></div>}
           >
-            {audits.length ? (
-              <Timeline items={audits.map((item) => ({ color: item.action === "删除" ? "red" : item.action === "新增" ? "blue" : item.action === "续费" ? "green" : item.action === "重置流量" ? "purple" : "gray", children: <div style={{ paddingBottom: 8 }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><span style={{ fontWeight: 600 }}>{item.action}</span><span style={{ color: "#64748b", fontSize: 12 }}>{item.created_at}</span></div><div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>操作人：{item.actor}</div><div style={{ marginTop: 8, lineHeight: 1.7 }}>{item.change_summary}</div></div> }))} />
-            ) : (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审计记录" />
-            )}
+            <div className="customer-audit-scroll">
+              {audits.length ? (
+                <Timeline items={audits.map((item) => ({ color: item.action === "删除" ? "red" : item.action === "新增" ? "blue" : item.action === "续费" ? "green" : item.action === "重置流量" ? "purple" : "gray", children: <div style={{ paddingBottom: 8 }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><span style={{ fontWeight: 600 }}>{item.action}</span><span style={{ color: "#64748b", fontSize: 12 }}>{item.created_at}</span></div><div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>操作人：{item.actor}</div><div style={{ marginTop: 8, lineHeight: 1.7 }}>{item.change_summary}</div></div> }))} />
+              ) : (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审计记录" />
+              )}
+            </div>
           </Card>
         </Col>
       </Row>
