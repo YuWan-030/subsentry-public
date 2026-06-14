@@ -351,9 +351,10 @@ export default function CustomerDetailPage() {
         .customer-detail-actions .detail-action-button { border-radius: 12px; }
         .customer-audit-card .ant-card-body { padding-right: 12px; }
         .customer-audit-scroll { max-height: min(50vh, 520px); overflow-y: auto; overflow-x: hidden; padding-right: 24px; scrollbar-gutter: stable; }
-        .customer-audit-scroll .ant-timeline { margin-bottom: 0; }
-        .customer-audit-row-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; min-width: 0; }
-        .customer-audit-row-action { min-width: 0; font-weight: 600; }
+        .customer-audit-scroll .ant-timeline { margin-bottom: 0; padding-left: 6px; }
+        .customer-audit-scroll .ant-timeline-item-content { margin-inline-start: 34px; }
+        .customer-audit-row-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; min-width: 0; line-height: 22px; }
+        .customer-audit-row-action { display: inline-flex; align-items: center; min-width: 0; min-height: 22px; font-weight: 600; }
         .customer-audit-row-time { white-space: nowrap; color: #64748b; font-size: 12px; }
         @media (max-width: 767px) {
           .customer-detail-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
