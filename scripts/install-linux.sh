@@ -66,7 +66,7 @@ install_base_packages() {
   case "$PKG_MANAGER" in
     apt)
       $SUDO apt-get update
-      $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y \
+      $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y \
         ca-certificates curl git nginx openssl python3 python3-pip python3-venv rsync
       ;;
     dnf)
@@ -96,7 +96,7 @@ install_nodejs() {
   case "$PKG_MANAGER" in
     apt)
       curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO bash -
-      $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
+      $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
       ;;
     dnf)
       curl -fsSL https://rpm.nodesource.com/setup_22.x | $SUDO bash -
