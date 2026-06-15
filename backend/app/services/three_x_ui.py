@@ -243,8 +243,7 @@ def reset_remote_client_traffic(node: Dict[str, Any], email: str) -> None:
     request_panel(
         node,
         "POST",
-        "/panel/api/clients/resetAllTraffics",
-        json_body={"email": email},
+        f"/panel/api/clients/resetTraffic/{email}",
     )
 
 
