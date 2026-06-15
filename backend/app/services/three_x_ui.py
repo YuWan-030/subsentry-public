@@ -239,6 +239,15 @@ def delete_remote_client(node: Dict[str, Any], email: str, keep_traffic: bool = 
     )
 
 
+def reset_remote_client_traffic(node: Dict[str, Any], email: str) -> None:
+    request_panel(
+        node,
+        "POST",
+        "/panel/api/clients/resetAllTraffics",
+        json_body={"email": email},
+    )
+
+
 def parse_expiry_date(value: str | None) -> datetime | None:
     raw = (value or "").strip()
     if not raw:

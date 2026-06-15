@@ -29,6 +29,7 @@ from backend.app.services.three_x_ui import (
     list_node_inbounds,
     list_remote_clients,
     normalize_base_path,
+    reset_remote_client_traffic,
     update_remote_client,
 )
 
@@ -924,11 +925,8 @@ def reset_customer_traffic(settings: Settings, customer_id: str, actor: str = "a
     _require_customer_access(settings, profile, actor, actor_role)
     current_view = _build_unified_customer(node, remote_detail, profile)
 
-    remote_payload = _sanitize_remote_client_payload(remote_detail)
-    remote_payload["reset"] = 1
-
     try:
-        update_remote_client(node, remote_email, remote_payload)
+        reset_remote_client_traffic(node, remote_email)
     except ThreeXUIError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
