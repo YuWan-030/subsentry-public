@@ -42,34 +42,25 @@ function loadTurnstileScript() {
 function TurnstileBox({ siteKey, onTokenChange }: { siteKey: string; onTokenChange: (token: string) => void }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => {
     let disposed = false;
     onTokenChange("");
-    setStatus("loading");
     loadTurnstileScript()
       .then(() => {
         if (disposed || !window.turnstile || !containerRef.current) {
           return;
         }
-        setStatus("ready");
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
           theme: "auto",
           appearance: "always",
           callback: (token) => onTokenChange(token),
           "expired-callback": () => onTokenChange(""),
-          "error-callback": () => {
-            onTokenChange("");
-            setStatus("error");
-          },
+          "error-callback": () => onTokenChange(""),
         });
       })
-      .catch(() => {
-        onTokenChange("");
-        setStatus("error");
-      });
+      .catch(() => onTokenChange(""));
 
     return () => {
       disposed = true;
@@ -80,13 +71,7 @@ function TurnstileBox({ siteKey, onTokenChange }: { siteKey: string; onTokenChan
     };
   }, [onTokenChange, siteKey]);
 
-  return (
-    <div className="turnstile-wrap">
-      <div ref={containerRef} />
-      {status === "loading" ? <span className="turnstile-hint">正在加载人机验证...</span> : null}
-      {status === "error" ? <span className="turnstile-hint">人机验证加载失败，请刷新页面</span> : null}
-    </div>
-  );
+  return <div className="turnstile-wrap" ref={containerRef} />;
 }
 
 export default function LoginPage({ onSuccess }: { onSuccess: () => void }) {
