@@ -308,6 +308,9 @@ EOF
 write_nginx_site() {
   log "Writing Nginx site..."
   $SUDO tee "/etc/nginx/conf.d/$APP_NAME.conf" >/dev/null <<EOF
+limit_req_zone \$binary_remote_addr zone=${APP_NAME}_login:10m rate=5r/m;
+limit_req_zone \$binary_remote_addr zone=${APP_NAME}_api:10m rate=20r/s;
+
 server {
     listen $HTTP_PORT;
     server_name _;
@@ -319,7 +322,30 @@ server {
 
     error_page 500 502 503 504 /index.html;
 
+    location ~* ^/(wp-admin|wp-login\\.php|wordpress|phpmyadmin|pma|adminer|cgi-bin|vendor|storage|backup|backups|config)(/|$) {
+        return 444;
+    }
+
+    location ~* /\\.(?!well-known/) {
+        return 404;
+    }
+
+    location ~* \\.(php|asp|aspx|jsp|cgi|env|bak|old|sql|tar|tgz|gz|zip|7z)$ {
+        return 444;
+    }
+
+    location = /api/v1/auth/login {
+        limit_req zone=${APP_NAME}_login burst=5 nodelay;
+        proxy_pass http://127.0.0.1:$BACKEND_PORT;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
     location /api/ {
+        limit_req zone=${APP_NAME}_api burst=80 nodelay;
         proxy_pass http://127.0.0.1:$BACKEND_PORT;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
