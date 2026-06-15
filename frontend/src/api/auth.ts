@@ -49,6 +49,11 @@ export async function fetchOnAuthConfig() {
   return response.data.data as { enabled: boolean };
 }
 
+export async function fetchTurnstileConfig() {
+  const response = await api.get("/api/v1/auth/turnstile/config");
+  return response.data.data as { enabled: boolean; site_key: string };
+}
+
 export async function startOnAuth(mode: "login" | "bind", redirectUri: string) {
   const response = await api.post("/api/v1/auth/onauth/start", { mode, redirect_uri: redirectUri });
   return response.data.data as { authorize_url: string };

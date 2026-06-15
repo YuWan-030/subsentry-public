@@ -40,6 +40,8 @@ class Settings:
     onauth_client_secret: str = ""
     onauth_scope: str = "read"
     onauth_verify_ssl: bool = True
+    turnstile_site_key: str = ""
+    turnstile_secret_key: str = ""
     node_probe_enabled: bool = True
     node_probe_interval_seconds: int = 300
     dashboard_cache_ttl_seconds: int = 20
@@ -115,6 +117,8 @@ def load_settings() -> Settings:
         onauth_client_secret=os.getenv("SUBSENTRY_ONAUTH_CLIENT_SECRET", ""),
         onauth_scope=os.getenv("SUBSENTRY_ONAUTH_SCOPE", "read"),
         onauth_verify_ssl=_env_bool("SUBSENTRY_ONAUTH_VERIFY_SSL", True),
+        turnstile_site_key=os.getenv("SUBSENTRY_TURNSTILE_SITE_KEY", "").strip(),
+        turnstile_secret_key=os.getenv("SUBSENTRY_TURNSTILE_SECRET_KEY", "").strip(),
         node_probe_enabled=_env_bool("SUBSENTRY_NODE_PROBE_ENABLED", True),
         node_probe_interval_seconds=_env_int("SUBSENTRY_NODE_PROBE_INTERVAL_SECONDS", 300, 30),
         dashboard_cache_ttl_seconds=_env_int("SUBSENTRY_DASHBOARD_CACHE_TTL_SECONDS", 20, 0),

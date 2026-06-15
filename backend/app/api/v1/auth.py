@@ -24,6 +24,7 @@ from backend.app.services.passkeys import (
     get_passkey_count,
     list_passkeys,
 )
+from backend.app.services.turnstile import is_turnstile_enabled, verify_turnstile
 from backend.app.services.users import (
     authenticate_user,
     bind_onauth_user,
@@ -51,6 +52,7 @@ PROCESSING_ONAUTH_STATES_LOCK = Lock()
 class LoginRequest(BaseModel):
     username: str
     password: str
+    turnstile_token: str | None = None
 
 
 class UserCreateRequest(BaseModel):
@@ -126,9 +128,27 @@ def _challenge_id_from_session_key(session_key: str, prefix: str) -> str:
     return session_key[len(prefix) :] if session_key.startswith(prefix) else session_key
 
 
+def _request_ip(request: Request) -> str:
+    forwarded_for = (request.headers.get("x-forwarded-for") or "").split(",", 1)[0].strip()
+    return request.headers.get("cf-connecting-ip") or forwarded_for or (request.client.host if request.client else "")
+
+
 @router.post("/login")
 def login(payload: LoginRequest, request: Request):
     settings: Settings = request.app.state.settings
+    remote_ip = _request_ip(request)
+    turnstile_ok, turnstile_message = verify_turnstile(settings, payload.turnstile_token, remote_ip)
+    if not turnstile_ok:
+        write_activity_log(
+            settings,
+            category="auth",
+            action="login",
+            actor=payload.username,
+            status="failed",
+            summary=f"登录失败：{payload.username}，{turnstile_message}",
+            ip_address=remote_ip,
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=turnstile_message)
     try:
         user = authenticate_user(settings, payload.username, payload.password)
     except HTTPException as exc:
@@ -184,6 +204,18 @@ def logout(request: Request):
     request.session.pop(SESSION_ROLE_KEY, None)
     request.session.pop("nickname", None)
     return {"success": True, "message": "已退出登录"}
+
+
+@router.get("/turnstile/config")
+def turnstile_config(request: Request):
+    settings: Settings = request.app.state.settings
+    return {
+        "success": True,
+        "data": {
+            "enabled": is_turnstile_enabled(settings),
+            "site_key": settings.turnstile_site_key if is_turnstile_enabled(settings) else "",
+        },
+    }
 
 
 @router.get("/me")

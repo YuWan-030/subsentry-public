@@ -1,8 +1,8 @@
 import { BgColorsOutlined } from "@ant-design/icons";
 import { Button, Card, Divider, Form, Input, Typography } from "antd";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchOnAuthConfig, finishPasskeyAuthentication, startOnAuth, startPasskeyAuthentication } from "../api/auth";
+import { fetchOnAuthConfig, fetchTurnstileConfig, finishPasskeyAuthentication, startOnAuth, startPasskeyAuthentication } from "../api/auth";
 import api from "../api/http";
 import { CuteBrandIcon, CuteStickerCluster } from "../components/CuteDecor";
 import SiteFooter from "../components/SiteFooter";
@@ -14,6 +14,65 @@ function OnAuthIcon({ size = 18 }: { size?: number }) {
   return <img src="/onauth.ico" alt="" aria-hidden="true" style={{ width: size, height: size, objectFit: "contain" }} />;
 }
 
+function loadTurnstileScript() {
+  const scriptId = "cf-turnstile-script";
+  const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+  if (window.turnstile) {
+    return Promise.resolve();
+  }
+  if (existing) {
+    return new Promise<void>((resolve, reject) => {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Turnstile script failed to load")), { once: true });
+    });
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Turnstile script failed to load"));
+    document.head.appendChild(script);
+  });
+}
+
+function TurnstileBox({ siteKey, onTokenChange }: { siteKey: string; onTokenChange: (token: string) => void }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let disposed = false;
+    onTokenChange("");
+    loadTurnstileScript()
+      .then(() => {
+        if (disposed || !window.turnstile || !containerRef.current) {
+          return;
+        }
+        widgetIdRef.current = window.turnstile.render(containerRef.current, {
+          sitekey: siteKey,
+          theme: "auto",
+          callback: (token) => onTokenChange(token),
+          "expired-callback": () => onTokenChange(""),
+          "error-callback": () => onTokenChange(""),
+        });
+      })
+      .catch(() => onTokenChange(""));
+
+    return () => {
+      disposed = true;
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current);
+      }
+      widgetIdRef.current = null;
+    };
+  }, [onTokenChange, siteKey]);
+
+  return <div className="turnstile-wrap" ref={containerRef} />;
+}
+
 export default function LoginPage({ onSuccess }: { onSuccess: () => void }) {
   const { themeLabel, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -21,21 +80,42 @@ export default function LoginPage({ onSuccess }: { onSuccess: () => void }) {
   const [onauthEnabled, setOnauthEnabled] = useState(false);
   const [onauthLoading, setOnauthLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [turnstileEnabled, setTurnstileEnabled] = useState(false);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileNonce, setTurnstileNonce] = useState(0);
   const passkeySupported = isPasskeySupported();
 
   useEffect(() => {
     fetchOnAuthConfig()
       .then((config) => setOnauthEnabled(config.enabled))
       .catch(() => setOnauthEnabled(false));
+    fetchTurnstileConfig()
+      .then((config) => {
+        setTurnstileEnabled(config.enabled);
+        setTurnstileSiteKey(config.site_key || "");
+      })
+      .catch(() => {
+        setTurnstileEnabled(false);
+        setTurnstileSiteKey("");
+      });
   }, []);
 
   const onFinish = async (values: { username: string; password: string }) => {
+    if (turnstileEnabled && !turnstileToken) {
+      notifyActionError("login-submit", "请先完成人机验证");
+      return;
+    }
     try {
       notifyActionLoading("login-submit", "登录中...");
-      await api.post("/api/v1/auth/login", values);
+      await api.post("/api/v1/auth/login", { ...values, turnstile_token: turnstileToken });
       notifyActionSuccess("login-submit", "登录成功");
       onSuccess();
     } catch (error: any) {
+      if (turnstileEnabled) {
+        setTurnstileToken("");
+        setTurnstileNonce((value) => value + 1);
+      }
       if (error?.response?.status === 403 && String(error?.response?.data?.detail || error?.message || "").includes("禁用")) {
         dismissActionFeedback("login-submit");
         navigate("/login/disabled", {
@@ -123,6 +203,11 @@ export default function LoginPage({ onSuccess }: { onSuccess: () => void }) {
           <Form.Item name="password" label="密码" rules={[{ required: true, message: "请输入密码" }]}>
             <Input.Password size="large" placeholder="请输入密码" autoComplete="current-password" />
           </Form.Item>
+          {turnstileEnabled && turnstileSiteKey ? (
+            <Form.Item>
+              <TurnstileBox key={turnstileNonce} siteKey={turnstileSiteKey} onTokenChange={setTurnstileToken} />
+            </Form.Item>
+          ) : null}
           <Button type="primary" htmlType="submit" block size="large" style={{ borderRadius: 12 }}>
             登录
           </Button>

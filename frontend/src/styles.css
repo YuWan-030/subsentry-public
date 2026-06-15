@@ -181,6 +181,13 @@ a {
   gap: 12px;
 }
 
+.turnstile-wrap {
+  display: flex;
+  justify-content: center;
+  min-height: 65px;
+  overflow: hidden;
+}
+
 .install-shell {
   min-height: 100vh;
   display: grid;
