@@ -1,5 +1,5 @@
 import { BgColorsOutlined } from "@ant-design/icons";
-import { Button, Card, Divider, Form, Input, Typography } from "antd";
+import { Button, Card, Form, Input, Typography } from "antd";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchOnAuthConfig, fetchTurnstileConfig, finishPasskeyAuthentication, startOnAuth, startPasskeyAuthentication } from "../api/auth";
@@ -197,7 +197,7 @@ export default function LoginPage({ onSuccess }: { onSuccess: () => void }) {
           </div>
           <Typography.Text type="secondary">订阅资产管理中心</Typography.Text>
         </div>
-        <Form form={form} layout="vertical" onFinish={onFinish}>
+        <Form className="login-form" form={form} layout="vertical" onFinish={onFinish}>
           <Form.Item name="username" label="用户名" rules={[{ required: true, message: "请输入用户名" }]}>
             <Input size="large" placeholder="请输入用户名" autoComplete="username" />
           </Form.Item>
@@ -209,25 +209,26 @@ export default function LoginPage({ onSuccess }: { onSuccess: () => void }) {
               <TurnstileBox key={turnstileNonce} siteKey={turnstileSiteKey} onTokenChange={setTurnstileToken} />
             </Form.Item>
           ) : null}
-          <Button type="primary" htmlType="submit" block size="large" style={{ borderRadius: 12 }}>
+          <Button type="primary" htmlType="submit" block size="large" className="login-submit-button">
             登录
           </Button>
         </Form>
-        {passkeySupported ? (
-          <>
-            <Divider plain>或</Divider>
-            <Button block size="large" loading={passkeyLoading} onClick={() => void loginWithPasskey()}>
-              使用 Passkey 登录
-            </Button>
-          </>
-        ) : null}
-        {onauthEnabled ? (
-          <>
-            <Divider plain>或</Divider>
-            <Button block size="large" icon={<OnAuthIcon />} loading={onauthLoading} onClick={() => void loginWithOnAuth()}>
-              使用 OnAuth 登录
-            </Button>
-          </>
+        {passkeySupported || onauthEnabled ? (
+          <div className="login-alt-actions">
+            <div className="login-alt-label">其他登录方式</div>
+            <div className="login-alt-grid">
+              {passkeySupported ? (
+                <Button block size="large" loading={passkeyLoading} onClick={() => void loginWithPasskey()}>
+                  Passkey
+                </Button>
+              ) : null}
+              {onauthEnabled ? (
+                <Button block size="large" icon={<OnAuthIcon />} loading={onauthLoading} onClick={() => void loginWithOnAuth()}>
+                  OnAuth
+                </Button>
+              ) : null}
+            </div>
+          </div>
         ) : null}
       </Card>
       <SiteFooter fixed />
