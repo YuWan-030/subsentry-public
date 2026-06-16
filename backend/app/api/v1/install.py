@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
 from backend.app.core.config import Settings
@@ -26,6 +26,11 @@ class CompletePayload(BaseModel):
     webhook_url: str | None = None
 
 
+def _ensure_install_open(settings: Settings) -> None:
+    if not install_status(settings).get("required"):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="系统已完成安装")
+
+
 @router.get("/status")
 def status(request: Request):
     settings: Settings = request.app.state.settings
@@ -35,16 +40,19 @@ def status(request: Request):
 @router.post("/database/test")
 def test_database(request: Request, payload: DatabasePayload):
     settings: Settings = request.app.state.settings
+    _ensure_install_open(settings)
     return test_database_payload(settings, payload.model_dump())
 
 
 @router.post("/database")
 def save_database(request: Request, payload: DatabasePayload):
     settings: Settings = request.app.state.settings
+    _ensure_install_open(settings)
     return save_database_config(settings, payload.model_dump())
 
 
 @router.post("/complete")
 def complete(request: Request, payload: CompletePayload):
     settings: Settings = request.app.state.settings
+    _ensure_install_open(settings)
     return complete_install(settings, request, payload.model_dump())

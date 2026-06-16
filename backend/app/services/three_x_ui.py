@@ -5,6 +5,9 @@ from typing import Any, Dict, List
 
 import requests
 
+from backend.app.core.config import load_settings
+from backend.app.services.url_guard import UnsafeUrlError, validate_outbound_url
+
 
 class ThreeXUIError(Exception):
     pass
@@ -46,6 +49,10 @@ def request_panel(
     timeout: int = 12,
 ) -> Any:
     url = f"{build_panel_base_url(node)}{path}"
+    try:
+        url = validate_outbound_url(load_settings(), url, label="Node panel URL")
+    except UnsafeUrlError as exc:
+        raise ThreeXUIError(str(exc)) from exc
     headers = {
         "Accept": "application/json",
     }
@@ -62,6 +69,7 @@ def request_panel(
             headers=headers,
             timeout=timeout,
             verify=not bool(node.get("allow_insecure")),
+            allow_redirects=False,
         )
     except requests.RequestException as exc:
         raise ThreeXUIError(f"Failed to connect to panel: {exc}") from exc

@@ -6,6 +6,7 @@ import requests
 
 from backend.app.core.config import Settings
 from backend.app.db.database import execute, query
+from backend.app.services.url_guard import UnsafeUrlError, validate_outbound_url
 
 
 def _now_text() -> str:
@@ -253,11 +254,13 @@ def retry_notification(settings: Settings, log_id: int) -> Dict[str, Any]:
         update_notification_result(settings, log_id, status="failed", error_message="Webhook 为空", retry_count_increment=True)
         return {"success": False, "message": "Webhook 为空"}
     try:
+        webhook = validate_outbound_url(settings, webhook, label="Webhook")
         response = requests.post(
             webhook,
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             headers={"Content-Type": "application/json; charset=utf-8"},
             timeout=8,
+            allow_redirects=False,
         )
         ok = response.status_code in (200, 201)
         update_notification_result(
@@ -270,6 +273,9 @@ def retry_notification(settings: Settings, log_id: int) -> Dict[str, Any]:
             retry_count_increment=True,
         )
         return {"success": ok, "message": "重试发送成功" if ok else f"重试发送失败：HTTP {response.status_code}"}
+    except UnsafeUrlError as exc:
+        update_notification_result(settings, log_id, status="failed", error_message=str(exc), retry_count_increment=True)
+        return {"success": False, "message": str(exc)}
     except Exception as exc:
         update_notification_result(settings, log_id, status="failed", error_message=str(exc), retry_count_increment=True)
         return {"success": False, "message": f"重试发送失败：{exc}"}

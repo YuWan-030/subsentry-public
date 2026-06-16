@@ -45,9 +45,15 @@ def is_setup_required(settings: Settings) -> bool:
 
 def install_status(settings: Settings) -> Dict[str, Any]:
     admin_count = _admin_count(settings)
+    required = admin_count == 0 and get_setting(settings, "setup_completed", "0") != "1"
+    if not required:
+        return {
+            "required": False,
+            "completed": True,
+        }
     return {
-        "required": admin_count == 0 and get_setting(settings, "setup_completed", "0") != "1",
-        "completed": get_setting(settings, "setup_completed", "0") == "1" or admin_count > 0,
+        "required": required,
+        "completed": False,
         "admin_count": admin_count,
         "database": {
             "type": settings.db_type,

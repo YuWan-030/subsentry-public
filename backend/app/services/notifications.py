@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
@@ -16,6 +17,7 @@ from backend.app.services.common import (
 from backend.app.services.customers import get_customer, list_customers
 from backend.app.services.logs import create_notification_log, update_notification_result
 from backend.app.services.task_state import record_task_state
+from backend.app.services.url_guard import UnsafeUrlError, validate_outbound_url
 
 
 EVENT_TEMPLATE_KEYS = {
@@ -24,6 +26,7 @@ EVENT_TEMPLATE_KEYS = {
     "customer_disabled": "notification_template_customer_disabled",
     "node_abnormal": "notification_template_node_abnormal",
 }
+_SIMPLE_PLACEHOLDER_RE = re.compile(r"{([A-Za-z_][A-Za-z0-9_]*)}")
 
 
 def default_expiry_template() -> str:
@@ -122,10 +125,11 @@ def _template_for_event(settings: Settings, event_type: str) -> str:
 
 
 def _safe_format(template: str, payload_map: Dict[str, Any], fallback: str) -> str:
-    try:
-        return template.format(**payload_map)
-    except Exception:
-        return fallback.format(**payload_map)
+    def render(source: str) -> str:
+        return _SIMPLE_PLACEHOLDER_RE.sub(lambda match: str(payload_map.get(match.group(1), "")), source)
+
+    rendered = render(template or "")
+    return rendered if rendered.strip() else render(fallback)
 
 
 def _remaining_text(rem_days: int, customer: Dict[str, Any] | None = None) -> str:
@@ -232,11 +236,13 @@ def _post_webhook_with_log(
         return False
 
     try:
+        webhook = validate_outbound_url(settings, webhook, label="Webhook")
         response = requests.post(
             webhook,
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             headers={"Content-Type": "application/json; charset=utf-8"},
             timeout=8,
+            allow_redirects=False,
         )
         ok = response.status_code in (200, 201)
         update_notification_result(
@@ -248,6 +254,9 @@ def _post_webhook_with_log(
             error_message="" if ok else f"HTTP {response.status_code}",
         )
         return ok
+    except UnsafeUrlError as exc:
+        update_notification_result(settings, log_id, status="failed", error_message=str(exc))
+        return False
     except Exception as exc:
         update_notification_result(settings, log_id, status="failed", error_message=str(exc))
         return False
@@ -284,11 +293,13 @@ def _post_group_webhook_with_logs(
         return False
 
     try:
+        webhook = validate_outbound_url(settings, webhook, label="Webhook")
         response = requests.post(
             webhook,
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             headers={"Content-Type": "application/json; charset=utf-8"},
             timeout=8,
+            allow_redirects=False,
         )
         ok = response.status_code in (200, 201)
         for log_id in log_ids:
@@ -301,6 +312,10 @@ def _post_group_webhook_with_logs(
                 error_message="" if ok else f"HTTP {response.status_code}",
             )
         return ok
+    except UnsafeUrlError as exc:
+        for log_id in log_ids:
+            update_notification_result(settings, log_id, status="failed", error_message=str(exc))
+        return False
     except Exception as exc:
         for log_id in log_ids:
             update_notification_result(settings, log_id, status="failed", error_message=str(exc))

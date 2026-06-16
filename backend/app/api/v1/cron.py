@@ -11,12 +11,7 @@ def _cron_authorized(request: Request, settings: Settings) -> bool:
     if request.session.get(SESSION_LOGIN_KEY) and str(request.session.get(SESSION_ROLE_KEY) or "") == "admin":
         return True
 
-    token = (
-        request.query_params.get("token")
-        or request.headers.get("X-Cron-Token")
-        or request.headers.get("X-Subsentry-Cron-Token")
-        or ""
-    ).strip()
+    token = (request.headers.get("X-Cron-Token") or request.headers.get("X-Subsentry-Cron-Token") or "").strip()
     auth_header = (request.headers.get("Authorization") or "").strip()
     if auth_header.lower().startswith("bearer "):
         token = auth_header[7:].strip()

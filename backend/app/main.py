@@ -4,7 +4,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
+from urllib.parse import urlparse
 
 from backend.app.api.v1.auth import router as auth_router
 from backend.app.api.v1.cron import router as cron_router
@@ -22,6 +26,34 @@ from backend.app.services.subscription_listener import LocalSubscriptionListener
 
 
 routers = [install_router, auth_router, dashboard_router, customers_router, settings_router, cron_router, logs_router, system_router]
+
+
+class OriginCheckMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, settings: Settings):
+        super().__init__(app)
+        self.settings = settings
+
+    async def dispatch(self, request: Request, call_next):
+        if not self.settings.csrf_enabled or request.method.upper() in {"GET", "HEAD", "OPTIONS"}:
+            return await call_next(request)
+
+        origin = request.headers.get("origin") or request.headers.get("referer") or ""
+        if not origin:
+            return await call_next(request)
+
+        parsed = urlparse(origin)
+        request_host = request.headers.get("host", "")
+        trusted = set(self.settings.csrf_trusted_origins)
+        if self.settings.cors_origins != ["*"]:
+            trusted.update(origin.rstrip("/") for origin in self.settings.cors_origins)
+        public_base = (self.settings.public_subscription_base_url or "").rstrip("/")
+        if public_base:
+            trusted.add(public_base)
+
+        origin_base = f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+        if parsed.netloc == request_host or origin_base in trusted:
+            return await call_next(request)
+        return JSONResponse({"success": False, "detail": "Invalid request origin"}, status_code=403)
 
 
 def create_app() -> FastAPI:
@@ -70,14 +102,21 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
     app.state.settings = settings
 
+    wildcard_cors = settings.cors_origins == ["*"]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins if settings.cors_origins != ["*"] else ["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=settings.cors_origins if not wildcard_cors else ["*"],
+        allow_credentials=settings.cors_allow_credentials and not wildcard_cors,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Cron-Token", "X-Subsentry-Cron-Token"],
     )
-    app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, same_site="lax", https_only=False)
+    app.add_middleware(OriginCheckMiddleware, settings=settings)
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.secret_key,
+        same_site=settings.session_same_site,
+        https_only=settings.session_https_only,
+    )
 
     for router in routers:
         app.include_router(router)

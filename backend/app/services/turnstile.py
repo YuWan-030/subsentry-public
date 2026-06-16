@@ -9,7 +9,7 @@ VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
 
 def is_turnstile_enabled(settings: Settings) -> bool:
-    return bool(settings.turnstile_site_key and settings.turnstile_secret_key)
+    return bool(settings.turnstile_enabled and settings.turnstile_site_key and settings.turnstile_secret_key)
 
 
 def verify_turnstile(settings: Settings, token: str | None, remote_ip: str = "") -> tuple[bool, str]:

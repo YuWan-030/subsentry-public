@@ -35,11 +35,18 @@ class Settings:
     admin_pass: str = "change-me"
     cron_token: str = "change-me"
     cors_origins: List[str] = field(default_factory=lambda: ["*"])
+    cors_allow_credentials: bool = True
+    csrf_enabled: bool = True
+    csrf_trusted_origins: List[str] = field(default_factory=list)
+    session_same_site: str = "lax"
+    session_https_only: bool = False
+    allow_private_targets: bool = True
     onauth_base_url: str = ""
     onauth_client_id: str = ""
     onauth_client_secret: str = ""
     onauth_scope: str = "read"
     onauth_verify_ssl: bool = True
+    turnstile_enabled: bool = True
     turnstile_site_key: str = ""
     turnstile_secret_key: str = ""
     node_probe_enabled: bool = True
@@ -100,6 +107,10 @@ def load_settings() -> Settings:
     cors_origins = [x.strip() for x in (os.getenv("SUBSENTRY_CORS_ORIGINS", "*").split(",")) if x.strip()]
     if not cors_origins:
         cors_origins = ["*"]
+    csrf_trusted_origins = [x.strip().rstrip("/") for x in (os.getenv("SUBSENTRY_CSRF_TRUSTED_ORIGINS", "").split(",")) if x.strip()]
+    session_same_site = (os.getenv("SUBSENTRY_SESSION_SAME_SITE", "lax") or "lax").strip().lower()
+    if session_same_site not in ("lax", "strict", "none"):
+        session_same_site = "lax"
 
     return Settings(
         app_name=os.getenv("SUBSENTRY_APP_NAME", "SubSentry API"),
@@ -112,11 +123,18 @@ def load_settings() -> Settings:
         admin_pass=os.getenv("SUBSENTRY_ADMIN_PASS", "change-me"),
         cron_token=os.getenv("SUBSENTRY_CRON_TOKEN", "change-me"),
         cors_origins=cors_origins,
+        cors_allow_credentials=_env_bool("SUBSENTRY_CORS_ALLOW_CREDENTIALS", True),
+        csrf_enabled=_env_bool("SUBSENTRY_CSRF_ENABLED", True),
+        csrf_trusted_origins=csrf_trusted_origins,
+        session_same_site=session_same_site,
+        session_https_only=_env_bool("SUBSENTRY_SESSION_HTTPS_ONLY", False),
+        allow_private_targets=_env_bool("SUBSENTRY_ALLOW_PRIVATE_TARGETS", True),
         onauth_base_url=os.getenv("SUBSENTRY_ONAUTH_BASE_URL", "").rstrip("/"),
         onauth_client_id=os.getenv("SUBSENTRY_ONAUTH_CLIENT_ID", ""),
         onauth_client_secret=os.getenv("SUBSENTRY_ONAUTH_CLIENT_SECRET", ""),
         onauth_scope=os.getenv("SUBSENTRY_ONAUTH_SCOPE", "read"),
         onauth_verify_ssl=_env_bool("SUBSENTRY_ONAUTH_VERIFY_SSL", True),
+        turnstile_enabled=_env_bool("SUBSENTRY_TURNSTILE_ENABLED", True),
         turnstile_site_key=os.getenv("SUBSENTRY_TURNSTILE_SITE_KEY", "").strip(),
         turnstile_secret_key=os.getenv("SUBSENTRY_TURNSTILE_SECRET_KEY", "").strip(),
         node_probe_enabled=_env_bool("SUBSENTRY_NODE_PROBE_ENABLED", True),
