@@ -27,13 +27,31 @@ export function bindFeedbackMessage(api: MessageInstance) {
 }
 
 export function extractErrorMessage(error: any, fallback: string) {
-  return (
+  const value =
     error?.response?.data?.detail ||
     error?.response?.data?.message ||
     error?.response?.data?.msg ||
     error?.message ||
-    fallback
-  );
+    fallback;
+  if (typeof value === "string") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === "string") {
+          return item;
+        }
+        const path = Array.isArray(item?.loc) ? item.loc.join(".") : "";
+        return [path, item?.msg].filter(Boolean).join("：") || JSON.stringify(item);
+      })
+      .filter(Boolean)
+      .join("；") || fallback;
+  }
+  if (value && typeof value === "object") {
+    return value.msg || value.message || JSON.stringify(value);
+  }
+  return fallback;
 }
 
 export function notifyDataLoaded(key: string, text: string) {

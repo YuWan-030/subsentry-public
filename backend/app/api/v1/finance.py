@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 
 from backend.app.core.config import Settings
@@ -28,12 +28,13 @@ def financial_logs(
     per_page: int = 20,
     keyword: str = "",
     owner_username: str = "",
-    node_id: int | None = None,
+    node_id: str | None = Query(default=None),
     date_from: str = "",
     date_to: str = "",
     username: str = Depends(require_admin),
 ):
     settings: Settings = request.app.state.settings
+    clean_node_id = int(node_id) if str(node_id or "").strip() else None
     return {
         "success": True,
         "data": list_financial_logs(
@@ -42,7 +43,7 @@ def financial_logs(
             per_page=per_page,
             keyword=keyword,
             owner_username=owner_username,
-            node_id=node_id,
+            node_id=clean_node_id,
             date_from=date_from,
             date_to=date_to,
         ),

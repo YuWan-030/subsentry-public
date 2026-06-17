@@ -39,7 +39,10 @@ export async function fetchFinancialLogs(params: {
   date_from?: string;
   date_to?: string;
 } = {}) {
-  const response = await api.get("/api/v1/finance/logs", { params });
+  const cleanParams = Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== "" && value !== undefined && value !== null),
+  );
+  const response = await api.get("/api/v1/finance/logs", { params: cleanParams });
   return response.data.data as FinancialLogPage;
 }
 
