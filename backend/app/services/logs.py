@@ -138,6 +138,58 @@ def _customer_audit_as_activity(row: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _user_audit_summary(row: Dict[str, Any]) -> str:
+    action = row.get("action") or ""
+    username = row.get("target_username") or row.get("target_user_id") or ""
+    change_summary = row.get("change_summary") or ""
+    if action == "create":
+        return f"创建用户：{username}"
+    if action == "delete":
+        return f"删除用户：{username}"
+    if action == "change_password":
+        return f"修改用户密码：{username}"
+    if action == "reset_password":
+        return f"重置用户密码：{username}"
+    if action == "set_enabled":
+        is_enabled = "true" in change_summary.lower() or "=1" in change_summary
+        return f"{'启用' if is_enabled else '停用'}用户：{username}"
+    if action == "set_nickname":
+        return f"修改用户昵称：{username}" + (f"（{change_summary}）" if change_summary else "")
+    if action == "bind_onauth":
+        return f"绑定 OnAuth：{username}"
+    if action == "unbind_onauth":
+        return f"解绑 OnAuth：{username}"
+    return change_summary or f"用户操作：{username}"
+
+
+def _user_audit_as_activity(row: Dict[str, Any]) -> Dict[str, Any]:
+    target_user_id = row.get("target_user_id")
+    target_username = row.get("target_username") or ""
+    return {
+        "id": f"user-{row.get('id')}",
+        "category": "user",
+        "action": row.get("action") or "",
+        "actor": row.get("actor") or "",
+        "target_type": "user",
+        "target_id": str(target_user_id or ""),
+        "target_name": target_username,
+        "status": "success",
+        "summary": _user_audit_summary(row),
+        "detail": json.dumps(
+            {
+                "source": "users_audit_logs",
+                "target_user_id": target_user_id,
+                "target_username": target_username,
+                "action": row.get("action") or "",
+                "change_summary": row.get("change_summary") or "",
+            },
+            ensure_ascii=False,
+        ),
+        "ip_address": "",
+        "created_at": row.get("created_at") or "",
+    }
+
+
 def _list_activity_table_rows(settings: Settings, category: str = "", keyword: str = "") -> List[Dict[str, Any]]:
     clauses: list[str] = []
     params: list[Any] = []
@@ -180,12 +232,34 @@ def _list_customer_audit_activity_rows(settings: Settings, keyword: str = "") ->
     return [_customer_audit_as_activity(row) for row in rows]
 
 
+def _list_user_audit_activity_rows(settings: Settings, keyword: str = "") -> List[Dict[str, Any]]:
+    clauses: list[str] = []
+    params: list[Any] = []
+    if keyword:
+        clauses.append("(change_summary LIKE ? OR actor LIKE ? OR target_username LIKE ? OR action LIKE ?)")
+        params.extend([f"%{keyword}%", f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"])
+    where_sql = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    rows = query(
+        settings,
+        f"""
+        SELECT id, target_user_id, target_username, action, actor, change_summary, created_at
+        FROM users_audit_logs
+        {where_sql}
+        ORDER BY id DESC
+        """,
+        tuple(params),
+    )
+    return [_user_audit_as_activity(row) for row in rows]
+
+
 def list_activity_logs(settings: Settings, page: int = 1, per_page: int = 20, category: str = "", keyword: str = "") -> Dict[str, Any]:
     clean_category = (category or "").strip()
     rows: List[Dict[str, Any]] = []
     rows.extend(_list_activity_table_rows(settings, clean_category, keyword))
     if clean_category in ("", "customer"):
         rows.extend(_list_customer_audit_activity_rows(settings, keyword))
+    if clean_category in ("", "user"):
+        rows.extend(_list_user_audit_activity_rows(settings, keyword))
 
     rows.sort(key=lambda item: (str(item.get("created_at") or ""), str(item.get("id") or "")), reverse=True)
     total = len(rows)
@@ -200,6 +274,9 @@ def list_activity_categories(settings: Settings) -> List[str]:
     customer_rows = query(settings, "SELECT id FROM customer_audit_logs LIMIT 1")
     if customer_rows:
         categories.add("customer")
+    user_rows = query(settings, "SELECT id FROM users_audit_logs LIMIT 1")
+    if user_rows:
+        categories.add("user")
     return sorted(categories)
 
 
