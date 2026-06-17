@@ -1031,6 +1031,9 @@ def process_customer_renew(settings: Settings, customer_id: str, days_to_add: in
     new_expiry_ms = extend_expiry_ms(remote_detail.get("expiryTime"), days_to_add)
     remote_payload = _sanitize_remote_client_payload(remote_detail)
     remote_payload["expiryTime"] = new_expiry_ms
+    enable_after_renew = True if current_view.get("enable") is False else current_view.get("enable", True)
+    if current_view.get("enable") is False:
+        remote_payload["enable"] = True
 
     try:
         update_remote_client(node, remote_email, remote_payload)
@@ -1114,7 +1117,7 @@ def process_customer_renew(settings: Settings, customer_id: str, days_to_add: in
             "expiry_display": new_expiry_display,
             "renew_price": final_price,
             "webhook_url": current_view.get("webhook_url", ""),
-            "enable": current_view.get("enable", True),
+            "enable": enable_after_renew,
             "inbound_ids": current_view.get("inbound_ids", []),
         },
     )
