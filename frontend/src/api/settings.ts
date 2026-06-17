@@ -24,7 +24,7 @@ export type SettingsOptions = {
     consecutive_failures?: number;
     abnormal_notified_at?: string;
   }>;
-  managers: Array<{ id: number; name: string }>;
+  managers: Array<{ id: number; name: string; username?: string; nickname?: string; role?: string }>;
   notification: {
     push_mode: "per_customer" | "summary" | "hybrid" | "manager_summary";
     max_detail_rows: number;

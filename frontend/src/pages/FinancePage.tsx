@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Card, DatePicker, Form, Grid, Input, InputNumber, List, Modal, Popconfirm, Space, Statistic, Table, Tag, Typography } from "antd";
+import { Button, Card, DatePicker, Form, Grid, Input, InputNumber, List, Modal, Popconfirm, Select, Space, Statistic, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { DeleteOutlined, EditOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -10,10 +10,13 @@ import {
   type FinancialLogRow,
   type FinancialLogUpdatePayload,
 } from "../api/finance";
+import { fetchSettingsOptions, type SettingsOptions } from "../api/settings";
 import { extractErrorMessage, notifyActionError, notifyActionLoading, notifyActionSuccess, notifyDataLoaded } from "../utils/feedback";
 
 const { RangePicker } = DatePicker;
 const { useBreakpoint } = Grid;
+
+let cachedFinanceOptions: Pick<SettingsOptions, "nodes" | "managers"> | null = null;
 
 function formatCurrency(value?: number) {
   return `¥${Number(value || 0).toFixed(2)}`;
@@ -31,9 +34,32 @@ export default function FinancePage() {
   const [totalAmount, setTotalAmount] = useState(0);
   const [keyword, setKeyword] = useState("");
   const [ownerUsername, setOwnerUsername] = useState("");
+  const [nodeId, setNodeId] = useState<number | undefined>();
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
+  const [optionLoading, setOptionLoading] = useState(false);
+  const [managerOptions, setManagerOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [nodeOptions, setNodeOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [editingRow, setEditingRow] = useState<FinancialLogRow | null>(null);
   const [form] = Form.useForm<FinancialLogUpdatePayload>();
+
+  const loadOptions = async () => {
+    if (cachedFinanceOptions) {
+      setManagerOptions(cachedFinanceOptions.managers.map((item: any) => ({ label: item.nickname || item.name || item.username, value: item.username || item.name })));
+      setNodeOptions(cachedFinanceOptions.nodes.map((item) => ({ label: item.name, value: item.id })));
+      return;
+    }
+    setOptionLoading(true);
+    try {
+      const options = await fetchSettingsOptions();
+      cachedFinanceOptions = { nodes: options.nodes || [], managers: options.managers || [] };
+      setManagerOptions(cachedFinanceOptions.managers.map((item: any) => ({ label: item.nickname || item.name || item.username, value: item.username || item.name })));
+      setNodeOptions(cachedFinanceOptions.nodes.map((item) => ({ label: item.name, value: item.id })));
+    } catch (error: any) {
+      notifyActionError("finance-options-load", extractErrorMessage(error, "加载筛选选项失败"));
+    } finally {
+      setOptionLoading(false);
+    }
+  };
 
   const loadRows = async (nextPage = page, nextPageSize = pageSize, showSuccess = false) => {
     setLoading(true);
@@ -43,6 +69,7 @@ export default function FinancePage() {
         per_page: nextPageSize,
         keyword,
         owner_username: ownerUsername,
+        node_id: nodeId || "",
         date_from: dateRange?.[0] || "",
         date_to: dateRange?.[1] || "",
       });
@@ -62,6 +89,7 @@ export default function FinancePage() {
   };
 
   useEffect(() => {
+    void loadOptions();
     void loadRows(1, pageSize, false);
   }, []);
 
@@ -116,6 +144,7 @@ export default function FinancePage() {
     { title: "时间", dataIndex: "created_at", key: "created_at", width: 170 },
     { title: "客户", dataIndex: "customer_name", key: "customer_name", width: 160, render: (value) => value || "-" },
     { title: "客户经理", dataIndex: "owner_username", key: "owner_username", width: 130, render: (value) => value || "-" },
+    { title: "集群节点", dataIndex: "node_name", key: "node_name", width: 130, render: (value, row) => value || row.node_id || "-" },
     { title: "远端标识", dataIndex: "remote_email", key: "remote_email", width: 180, render: (value) => value || "-" },
     { title: "续费价格", dataIndex: "renew_price", key: "renew_price", width: 130, render: (value) => <Tag>{value || "-"}</Tag> },
     { title: "金额", dataIndex: "amount", key: "amount", width: 110, render: (value) => <Typography.Text strong>{formatCurrency(value)}</Typography.Text> },
@@ -149,9 +178,14 @@ export default function FinancePage() {
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>{row.created_at}</Typography.Text>
             </Space>
             <Typography.Text strong>{row.customer_name}</Typography.Text>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>客户经理：{row.owner_username || "-"} / 天数：{row.renew_days}</Typography.Text>
-            <Typography.Text strong>{formatCurrency(row.amount)}</Typography.Text>
-            <Space wrap>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "end" }}>
+              <Space direction="vertical" size={2}>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>客户经理：{row.owner_username || "-"}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>节点：{row.node_name || row.node_id || "-"} / 天数：{row.renew_days}</Typography.Text>
+              </Space>
+              <Typography.Text strong style={{ fontSize: 18 }}>{formatCurrency(row.amount)}</Typography.Text>
+            </div>
+            <Space wrap size={8}>
               <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>修改</Button>
               <Popconfirm title="确认删除这条财务流水？" okText="删除" cancelText="取消" onConfirm={() => void removeRow(row)}>
                 <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
@@ -171,9 +205,16 @@ export default function FinancePage() {
         <Typography.Text type="secondary">查看和维护客户续费产生的收入流水，修改或删除后会刷新总览收入统计。</Typography.Text>
       </div>
 
-      <Card bordered={false} style={{ borderRadius: 16, marginBottom: 16 }} bodyStyle={{ padding: isMobile ? 14 : 20 }}>
-        <Space direction={isMobile ? "vertical" : "horizontal"} wrap={!isMobile} style={{ width: "100%", justifyContent: "space-between" }}>
-          <Space direction={isMobile ? "vertical" : "horizontal"} wrap style={{ width: isMobile ? "100%" : undefined }}>
+      <Card bordered={false} style={{ borderRadius: 16, marginBottom: 16 }} bodyStyle={{ padding: isMobile ? 12 : 20 }}>
+        <Space direction="vertical" size={isMobile ? 12 : 16} style={{ width: "100%" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr 1fr" : "minmax(220px, 1.4fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(280px, 1.4fr) auto auto",
+              gap: isMobile ? 8 : 10,
+              alignItems: "center",
+            }}
+          >
             <Input
               allowClear
               prefix={<SearchOutlined />}
@@ -181,26 +222,39 @@ export default function FinancePage() {
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               onPressEnter={search}
-              style={{ width: isMobile ? "100%" : 260 }}
+              style={{ gridColumn: isMobile ? "1 / -1" : undefined }}
             />
-            <Input
+            <Select
               allowClear
+              showSearch
+              loading={optionLoading}
               placeholder="客户经理"
+              optionFilterProp="label"
               value={ownerUsername}
-              onChange={(event) => setOwnerUsername(event.target.value)}
-              onPressEnter={search}
-              style={{ width: isMobile ? "100%" : 150 }}
+              options={managerOptions}
+              onChange={(value) => setOwnerUsername(value || "")}
+            />
+            <Select
+              allowClear
+              showSearch
+              loading={optionLoading}
+              placeholder="集群节点"
+              optionFilterProp="label"
+              value={nodeId}
+              options={nodeOptions}
+              onChange={(value) => setNodeId(value)}
             />
             <RangePicker
               showTime
-              style={{ width: isMobile ? "100%" : 360 }}
+              inputReadOnly={isMobile}
+              style={{ width: "100%", gridColumn: isMobile ? "1 / -1" : undefined }}
               onChange={(values) => {
                 setDateRange(values ? [values[0]?.format("YYYY-MM-DD HH:mm:ss") || "", values[1]?.format("YYYY-MM-DD HH:mm:ss") || ""] : null);
               }}
             />
             <Button type="primary" icon={<SearchOutlined />} onClick={search}>查询</Button>
             <Button icon={<ReloadOutlined />} onClick={() => void loadRows(page, pageSize, true)}>刷新</Button>
-          </Space>
+          </div>
           <Statistic title="筛选合计" value={totalAmount} precision={2} prefix="¥" />
         </Space>
       </Card>

@@ -6,6 +6,7 @@ export type FinancialLogRow = {
   customer_id?: number;
   owner_username?: string;
   node_id?: number;
+  node_name?: string;
   remote_email?: string;
   customer_name: string;
   renew_price: string;
@@ -34,6 +35,7 @@ export async function fetchFinancialLogs(params: {
   per_page?: number;
   keyword?: string;
   owner_username?: string;
+  node_id?: number | string;
   date_from?: string;
   date_to?: string;
 } = {}) {
