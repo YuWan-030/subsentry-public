@@ -14,6 +14,7 @@ from backend.app.api.v1.auth import router as auth_router
 from backend.app.api.v1.cron import router as cron_router
 from backend.app.api.v1.customers import router as customers_router
 from backend.app.api.v1.dashboard import router as dashboard_router
+from backend.app.api.v1.finance import router as finance_router
 from backend.app.api.v1.install import router as install_router
 from backend.app.api.v1.logs import router as logs_router
 from backend.app.api.v1.settings import router as settings_router
@@ -25,7 +26,7 @@ from backend.app.services.logs import write_activity_log
 from backend.app.services.subscription_listener import LocalSubscriptionListener
 
 
-routers = [install_router, auth_router, dashboard_router, customers_router, settings_router, cron_router, logs_router, system_router]
+routers = [install_router, auth_router, dashboard_router, customers_router, settings_router, cron_router, logs_router, finance_router, system_router]
 
 
 class OriginCheckMiddleware(BaseHTTPMiddleware):

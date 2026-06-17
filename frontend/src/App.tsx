@@ -13,6 +13,7 @@ import SettingsPage from "./pages/SettingsPage";
 import UsersPage from "./pages/UsersPage";
 import NodesPage from "./pages/NodesPage";
 import LogsPage from "./pages/LogsPage";
+import FinancePage from "./pages/FinancePage";
 import SystemHealthPage from "./pages/SystemHealthPage";
 import ProfilePage from "./pages/ProfilePage";
 import OnAuthCallbackPage from "./pages/OnAuthCallbackPage";
@@ -146,6 +147,7 @@ function AppShell() {
           <Route path="settings/users" element={currentUser?.role === "admin" ? <UsersPage /> : <Navigate to="/" replace />} />
           <Route path="settings/nodes" element={currentUser?.role === "admin" ? <NodesPage /> : <Navigate to="/" replace />} />
           <Route path="system/health" element={currentUser?.role === "admin" ? <SystemHealthPage /> : <Navigate to="/" replace />} />
+          <Route path="finance" element={currentUser?.role === "admin" ? <FinancePage /> : <Navigate to="/" replace />} />
           <Route path="logs" element={currentUser?.role === "admin" ? <LogsPage /> : <Navigate to="/" replace />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

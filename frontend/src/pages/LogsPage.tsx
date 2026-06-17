@@ -21,6 +21,7 @@ const ACTIVITY_CATEGORY_OPTIONS = [
   { label: "节点", value: "node" },
   { label: "批量操作", value: "bulk" },
   { label: "客户", value: "customer" },
+  { label: "财务", value: "finance" },
   { label: "通知", value: "notification" },
 ];
 
@@ -46,6 +47,7 @@ const ACTIVITY_CATEGORY_LABELS: Record<string, string> = {
   node: "节点",
   bulk: "批量操作",
   customer: "客户",
+  finance: "财务",
   notification: "通知",
 };
 

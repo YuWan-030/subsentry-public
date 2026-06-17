@@ -7,6 +7,7 @@ import {
   HistoryOutlined,
   BgColorsOutlined,
   HeartOutlined,
+  MoneyCollectOutlined,
   LogoutOutlined,
   SettingOutlined,
   TeamOutlined,
@@ -36,6 +37,7 @@ export default function ShellLayout() {
     ...(user?.role === "admin" ? [{ key: "/settings/users", icon: <UserOutlined />, label: "用户管理" }] : []),
     ...(user?.role === "admin" ? [{ key: "/settings", icon: <SettingOutlined />, label: "系统设置" }] : []),
     ...(user?.role === "admin" ? [{ key: "/system/health", icon: <HeartOutlined />, label: "系统健康" }] : []),
+    ...(user?.role === "admin" ? [{ key: "/finance", icon: <MoneyCollectOutlined />, label: "财务流水" }] : []),
     ...(user?.role === "admin" ? [{ key: "/logs", icon: <HistoryOutlined />, label: "日志中心" }] : []),
   ];
 
