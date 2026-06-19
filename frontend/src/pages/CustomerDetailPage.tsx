@@ -63,6 +63,7 @@ type EditFormValues = {
   renew_price_amount?: string;
   renew_price_period?: "月" | "季" | "年";
   webhook_url?: string;
+  notes?: string;
   enable?: boolean;
 };
 
@@ -428,6 +429,7 @@ export default function CustomerDetailPage() {
                 renew_price_amount: renewPrice.amount,
                 renew_price_period: renewPrice.period,
                 webhook_url: customer.webhook_url,
+                notes: customer.notes,
                 enable: customer.enable,
               });
               setEditMode("date");
@@ -513,6 +515,7 @@ export default function CustomerDetailPage() {
               <Descriptions.Item label="IP 限制">{formatIpLimit(customer.limit_ip)}</Descriptions.Item>
               <Descriptions.Item label="启用状态">{customer.enable ? "启用" : "停用"}</Descriptions.Item>
               <Descriptions.Item label="Webhook">{customer.webhook_url || "使用全局默认 Webhook"}</Descriptions.Item>
+              <Descriptions.Item label="备注">{customer.notes || "-"}</Descriptions.Item>
             </Descriptions>
           </Card>
         </Col>
@@ -634,6 +637,7 @@ export default function CustomerDetailPage() {
               limit_ip: values.limit_ip,
               renew_price: renewPrice,
               webhook_url: values.webhook_url,
+              notes: values.notes,
               enable: values.enable,
               ...buildExpiryPayload(editMode, editDurationDays, editCustomDate),
             });
@@ -738,6 +742,11 @@ export default function CustomerDetailPage() {
             <Col xs={24} md={12}>
               <Form.Item name="webhook_url" label="Webhook">
                 <Input placeholder="留空则使用全局默认 Webhook" />
+              </Form.Item>
+            </Col>
+            <Col xs={24}>
+              <Form.Item name="notes" label="备注">
+                <Input.TextArea rows={3} maxLength={500} showCount placeholder="填写客户备注，仅保存在 SubSentry 本地" />
               </Form.Item>
             </Col>
           </Row>

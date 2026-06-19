@@ -267,12 +267,13 @@ def _upsert_profile(
     renew_price: str,
     traffic_multiplier: float = DEFAULT_TRAFFIC_MULTIPLIER,
     webhook_url: str,
-    notes: str = "",
+    notes: str | None = None,
 ) -> None:
     existing = _get_profile(settings, node_id, remote_email)
     now_text = _now_text()
     owner_username = _normalize_owner_username(owner_username)
     traffic_multiplier = _normalize_traffic_multiplier(traffic_multiplier)
+    clean_notes = str(notes if notes is not None else (existing or {}).get("notes") or "").strip()
     if existing:
         execute(
             settings,
@@ -281,7 +282,7 @@ def _upsert_profile(
             SET node_name = ?, display_name = ?, owner_username = ?, manager = ?, renew_price = ?, traffic_multiplier = ?, webhook_url = ?, notes = ?, updated_at = ?
             WHERE node_id = ? AND remote_email = ?
             """,
-            (node_name, display_name, owner_username, manager, renew_price, traffic_multiplier, webhook_url, notes, now_text, node_id, remote_email),
+            (node_name, display_name, owner_username, manager, renew_price, traffic_multiplier, webhook_url, clean_notes, now_text, node_id, remote_email),
         )
         return
 
@@ -292,7 +293,7 @@ def _upsert_profile(
         (node_id, node_name, remote_email, display_name, owner_username, manager, renew_price, traffic_multiplier, webhook_url, notes, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (node_id, node_name, remote_email, display_name, owner_username, manager, renew_price, traffic_multiplier, webhook_url, notes, now_text, now_text),
+        (node_id, node_name, remote_email, display_name, owner_username, manager, renew_price, traffic_multiplier, webhook_url, clean_notes, now_text, now_text),
     )
 
 
@@ -366,6 +367,7 @@ def _build_unified_customer(node: Dict[str, Any], remote_client: Dict[str, Any],
     renew_price = ((profile or {}).get("renew_price") or DEFAULT_RENEW_PRICE).strip() or DEFAULT_RENEW_PRICE
     traffic_multiplier = _profile_traffic_multiplier(profile)
     webhook_url = ((profile or {}).get("webhook_url") or "").strip()
+    notes = ((profile or {}).get("notes") or "").strip()
     inbound_ids = [int(x) for x in (remote_client.get("inboundIds") or [])]
     inbound_text = ", ".join(str(x) for x in inbound_ids) if inbound_ids else "-"
     expiry_ms = remote_client.get("expiryTime")
@@ -393,6 +395,7 @@ def _build_unified_customer(node: Dict[str, Any], remote_client: Dict[str, Any],
         "duration": f"Inbounds: {inbound_text}",
         "traffic": traffic_snapshot["traffic_remaining_display"],
         "webhook_url": webhook_url,
+        "notes": notes,
         "enable": bool(remote_client.get("enable", True)),
         "inbound_ids": inbound_ids,
         "total_gb": traffic_snapshot["traffic_total_gb"],
@@ -444,6 +447,7 @@ def _build_unified_customer(node: Dict[str, Any], remote_client: Dict[str, Any],
         "is_unlimited_traffic": record["is_unlimited_traffic"],
         "limit_ip": record["limit_ip"],
         "webhook_url": record["webhook_url"],
+        "notes": record["notes"],
         "last_online": record["last_online"],
         "created_at": record["created_at"],
         "updated_at": record["updated_at"],
@@ -694,6 +698,7 @@ def _prepare_create_payload(settings: Settings, payload: Dict[str, Any]) -> tupl
     renew_price = _normalize_renew_price_text(payload.get("renew_price"))
     traffic_multiplier = _normalize_traffic_multiplier(payload.get("traffic_multiplier"))
     webhook_url = (payload.get("webhook_url") or "").strip()
+    notes = (payload.get("notes") or "").strip()
     node_id = payload.get("node_id")
     inbound_ids = [int(x) for x in (payload.get("inbound_ids") or [])]
     total_gb = payload.get("total_gb")
@@ -722,6 +727,7 @@ def _prepare_create_payload(settings: Settings, payload: Dict[str, Any]) -> tupl
         "renew_price": renew_price,
         "traffic_multiplier": traffic_multiplier,
         "webhook_url": webhook_url,
+        "notes": notes,
     }
     return client_payload, inbound_ids, {"node": node, "profile": profile_payload}
 
@@ -827,6 +833,8 @@ def update_customer(settings: Settings, customer_id: str, payload: Dict[str, Any
     renew_price = _normalize_renew_price_text(payload.get("renew_price") if "renew_price" in payload else current_view["renew_price"])
     traffic_multiplier = _normalize_traffic_multiplier(payload.get("traffic_multiplier") if "traffic_multiplier" in payload else current_view.get("traffic_multiplier"))
     webhook_url = (payload.get("webhook_url") or current_view.get("webhook_url") or "").strip()
+    notes = (payload.get("notes") if "notes" in payload else current_view.get("notes") or "")
+    notes = str(notes or "").strip()
     new_email = (payload.get("remote_email") or remote_email).strip()
     new_inbound_ids = [int(x) for x in payload.get("inbound_ids", current_view.get("inbound_ids", []))]
 
@@ -873,6 +881,7 @@ def update_customer(settings: Settings, customer_id: str, payload: Dict[str, Any
         renew_price=renew_price,
         traffic_multiplier=traffic_multiplier,
         webhook_url=webhook_url,
+        notes=notes,
     )
     if target_email != remote_email:
         execute(settings, "DELETE FROM remote_customer_profiles WHERE node_id = ? AND remote_email = ?", (node_id, remote_email))
@@ -896,6 +905,7 @@ def update_customer(settings: Settings, customer_id: str, payload: Dict[str, Any
             "renew_price": current_view["renew_price"],
             "traffic_multiplier": current_view.get("traffic_multiplier", DEFAULT_TRAFFIC_MULTIPLIER),
             "webhook_url": current_view.get("webhook_url", ""),
+            "notes": current_view.get("notes", ""),
             "enable": current_view.get("enable", True),
             "inbound_ids": current_view.get("inbound_ids", []),
         },
@@ -910,6 +920,7 @@ def update_customer(settings: Settings, customer_id: str, payload: Dict[str, Any
             "renew_price": updated_view["renew_price"],
             "traffic_multiplier": updated_view.get("traffic_multiplier", DEFAULT_TRAFFIC_MULTIPLIER),
             "webhook_url": updated_view.get("webhook_url", ""),
+            "notes": updated_view.get("notes", ""),
             "enable": updated_view.get("enable", True),
             "inbound_ids": updated_view.get("inbound_ids", []),
         },

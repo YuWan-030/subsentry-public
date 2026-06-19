@@ -20,6 +20,7 @@ export type CustomerRow = {
   traffic_remaining_display?: string;
   is_unlimited_traffic?: boolean;
   webhook_url?: string;
+  notes?: string;
   enable?: boolean;
   expiry_display?: string;
   is_unlimited_expiry?: boolean;
@@ -96,6 +97,7 @@ export type CustomerPayload = {
   expiry_date?: string;
   renew_price?: string;
   webhook_url?: string;
+  notes?: string;
   duration_mode?: "days" | "date";
   duration_days?: number;
   custom_expiry_date?: string;

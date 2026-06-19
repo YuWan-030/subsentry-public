@@ -32,6 +32,7 @@ class CustomerPayload(BaseModel):
     expiry_date: str | None = None
     renew_price: str | None = None
     webhook_url: str | None = None
+    notes: str | None = None
     duration_mode: str | None = None
     duration_days: int | None = None
     custom_expiry_date: str | None = None

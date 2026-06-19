@@ -48,6 +48,7 @@ type CustomerRow = {
   remote_email: string;
   manager: string;
   renew_price?: string;
+  notes?: string;
   remaining_days: number;
   status_text: string;
   status_level: "expired" | "today" | "warning" | "healthy" | "disabled" | "unlimited";
@@ -67,6 +68,7 @@ type CustomerFormValues = {
   renew_price_amount?: string;
   renew_price_period?: "月" | "季" | "年";
   webhook_url?: string;
+  notes?: string;
   inbound_ids?: number[];
   total_gb?: number;
   traffic_multiplier?: number;
@@ -321,6 +323,7 @@ export default function CustomersPage() {
       node_id: values.node_id,
       renew_price: renewPrice,
       webhook_url: values.webhook_url,
+      notes: values.notes,
       inbound_ids: values.inbound_ids,
       total_gb: values.total_gb,
       traffic_multiplier: values.traffic_multiplier,
@@ -855,6 +858,11 @@ export default function CustomersPage() {
             <Col xs={24} md={12}>
               <Form.Item name="webhook_url" label="Webhook 地址">
                 <Input placeholder="可留空，使用全局默认 Webhook" />
+              </Form.Item>
+            </Col>
+            <Col xs={24}>
+              <Form.Item name="notes" label="备注">
+                <Input.TextArea rows={3} maxLength={500} showCount placeholder="填写客户备注，仅保存在 SubSentry 本地" />
               </Form.Item>
             </Col>
           </Row>

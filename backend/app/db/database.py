@@ -289,6 +289,9 @@ def init_db(settings: Settings) -> None:
                 cursor.execute("SHOW COLUMNS FROM remote_customer_profiles LIKE 'traffic_multiplier'")
                 if not cursor.fetchone():
                     cursor.execute("ALTER TABLE remote_customer_profiles ADD COLUMN traffic_multiplier DOUBLE NOT NULL DEFAULT 1 AFTER renew_price;")
+                cursor.execute("SHOW COLUMNS FROM remote_customer_profiles LIKE 'notes'")
+                if not cursor.fetchone():
+                    cursor.execute("ALTER TABLE remote_customer_profiles ADD COLUMN notes TEXT NULL AFTER webhook_url;")
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS users (
@@ -681,6 +684,8 @@ def init_db(settings: Settings) -> None:
                 conn.execute("ALTER TABLE remote_customer_profiles ADD COLUMN owner_username TEXT;")
             if "traffic_multiplier" not in profile_columns:
                 conn.execute("ALTER TABLE remote_customer_profiles ADD COLUMN traffic_multiplier REAL NOT NULL DEFAULT 1;")
+            if "notes" not in profile_columns:
+                conn.execute("ALTER TABLE remote_customer_profiles ADD COLUMN notes TEXT;")
 
         ensure_setting(conn, settings, "notification_template", settings.default_notification_template)
         if (os.getenv("SUBSENTRY_CREATE_DEFAULT_ADMIN") or "").strip().lower() in ("1", "true", "yes", "on"):
