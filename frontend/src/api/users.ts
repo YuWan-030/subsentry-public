@@ -43,9 +43,9 @@ export async function deleteUser(userId: number) {
   return response.data as { success: boolean; message: string };
 }
 
-export async function changeUserPassword(userId: number, password: string) {
-  const response = await api.put(`/api/v1/auth/users/${userId}/password`, { password });
-  return response.data as { success: boolean; message: string };
+export async function updateUserRole(userId: number, role: "admin" | "user") {
+  const response = await api.put(`/api/v1/auth/users/${userId}/role`, { role });
+  return response.data as { success: boolean; message: string; role: "admin" | "user" };
 }
 
 export async function resetUserPassword(userId: number) {

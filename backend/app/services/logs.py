@@ -155,6 +155,8 @@ def _user_audit_summary(row: Dict[str, Any]) -> str:
         return f"{'启用' if is_enabled else '停用'}用户：{username}"
     if action == "set_nickname":
         return f"修改用户昵称：{username}" + (f"（{change_summary}）" if change_summary else "")
+    if action == "set_role":
+        return f"修改用户角色：{username}" + (f"（{change_summary}）" if change_summary else "")
     if action == "bind_onauth":
         return f"绑定 OnAuth：{username}"
     if action == "unbind_onauth":

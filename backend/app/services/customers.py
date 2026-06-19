@@ -83,6 +83,13 @@ def _normalize_renew_price_text(price_text: str | None) -> str:
     return clean_text
 
 
+def _normalize_webhook_url(value: str | None) -> str:
+    webhook_url = (value or "").strip()
+    if webhook_url and not webhook_url.lower().startswith(("http://", "https://")):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Webhook 地址必须以 http:// 或 https:// 开头")
+    return webhook_url
+
+
 def _normalize_traffic_multiplier(value: Any) -> float:
     if value in (None, ""):
         return DEFAULT_TRAFFIC_MULTIPLIER
@@ -503,6 +510,7 @@ def _append_audit_changes(summary_parts: List[str], old_data: Dict[str, Any], ne
         "traffic_used_display": "已用流量",
         "traffic_remaining_display": "剩余流量",
         "webhook_url": "Webhook",
+        "notes": "备注",
         "enable": "启用状态",
         "sub_id": "3X-UI 订阅ID",
         "inbound_ids": "挂载入站",
@@ -697,7 +705,7 @@ def _prepare_create_payload(settings: Settings, payload: Dict[str, Any]) -> tupl
         remote_email = _generate_remote_email(name, owner_username)
     renew_price = _normalize_renew_price_text(payload.get("renew_price"))
     traffic_multiplier = _normalize_traffic_multiplier(payload.get("traffic_multiplier"))
-    webhook_url = (payload.get("webhook_url") or "").strip()
+    webhook_url = _normalize_webhook_url(payload.get("webhook_url"))
     notes = (payload.get("notes") or "").strip()
     node_id = payload.get("node_id")
     inbound_ids = [int(x) for x in (payload.get("inbound_ids") or [])]
@@ -832,7 +840,7 @@ def update_customer(settings: Settings, customer_id: str, payload: Dict[str, Any
         manager = current_view["manager"] or _normalize_owner_username(actor) or DEFAULT_MANAGER
     renew_price = _normalize_renew_price_text(payload.get("renew_price") if "renew_price" in payload else current_view["renew_price"])
     traffic_multiplier = _normalize_traffic_multiplier(payload.get("traffic_multiplier") if "traffic_multiplier" in payload else current_view.get("traffic_multiplier"))
-    webhook_url = (payload.get("webhook_url") or current_view.get("webhook_url") or "").strip()
+    webhook_url = _normalize_webhook_url(payload.get("webhook_url") if "webhook_url" in payload else current_view.get("webhook_url"))
     notes = (payload.get("notes") if "notes" in payload else current_view.get("notes") or "")
     notes = str(notes or "").strip()
     new_email = (payload.get("remote_email") or remote_email).strip()

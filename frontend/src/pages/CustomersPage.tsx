@@ -22,6 +22,18 @@ const RENEW_PRICE_PERIOD_OPTIONS = [
 ];
 const CUSTOMER_PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const CUSTOMER_PAGE_SIZE_STORAGE_KEY = "subsentry:customers-page-size";
+const CUSTOMER_NOTES_MAX_LENGTH = 100;
+const WEBHOOK_URL_RULES = [
+  {
+    validator: (_: unknown, value?: string) => {
+      const cleanValue = String(value || "").trim();
+      if (!cleanValue || cleanValue.startsWith("http://") || cleanValue.startsWith("https://")) {
+        return Promise.resolve();
+      }
+      return Promise.reject(new Error("Webhook 地址必须以 http:// 或 https:// 开头"));
+    },
+  },
+];
 
 function getInitialCustomerPageSize() {
   if (typeof window === "undefined") {
@@ -119,6 +131,7 @@ export default function CustomersPage() {
   const [bulkCustomExpiryDate, setBulkCustomExpiryDate] = useState<Dayjs | null>(null);
   const [form] = Form.useForm<CustomerFormValues>();
   const [bulkForm] = Form.useForm<BulkFormValues>();
+  const notesValue = Form.useWatch("notes", form) || "";
 
   const screens = useBreakpoint();
   const isMobile = screens.md === false;
@@ -533,6 +546,22 @@ export default function CustomersPage() {
         .joined-price-input .ant-input:hover,
         .joined-price-input .ant-input:focus,
         .joined-price-input .ant-select-focused .ant-select-selector { position: relative; z-index: 1; }
+        .customer-notes-textarea {
+          resize: none !important;
+          overflow: hidden !important;
+        }
+        .customer-notes-textarea::-webkit-scrollbar {
+          width: 0;
+          height: 0;
+          display: none;
+        }
+        .customer-notes-count {
+          margin-top: 6px;
+          text-align: right;
+          color: var(--text-sub);
+          font-size: 12px;
+          line-height: 1;
+        }
       `}</style>
 
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", marginBottom: 14, gap: 12 }}>
@@ -856,14 +885,15 @@ export default function CustomersPage() {
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name="webhook_url" label="Webhook 地址">
+              <Form.Item name="webhook_url" label="Webhook 地址" rules={WEBHOOK_URL_RULES}>
                 <Input placeholder="可留空，使用全局默认 Webhook" />
               </Form.Item>
             </Col>
             <Col xs={24}>
-              <Form.Item name="notes" label="备注">
-                <Input.TextArea rows={3} maxLength={500} showCount placeholder="填写客户备注，仅保存在 SubSentry 本地" />
+              <Form.Item name="notes" label="备注" style={{ marginBottom: 0 }}>
+                <Input.TextArea rows={2} maxLength={CUSTOMER_NOTES_MAX_LENGTH} placeholder="填写客户备注，仅保存在 SubSentry 本地" className="customer-notes-textarea" />
               </Form.Item>
+              <div className="customer-notes-count">{String(notesValue).length} / {CUSTOMER_NOTES_MAX_LENGTH}</div>
             </Col>
           </Row>
         </Form>

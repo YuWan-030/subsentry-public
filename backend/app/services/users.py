@@ -178,6 +178,8 @@ def set_enabled(settings: Settings, user_id: int, enabled: bool, actor: str | No
     target = get_user_by_id(settings, user_id)
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="未找到该用户")
+    if not enabled and str(target.get("username") or "") == (actor or ""):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="管理员不能禁用自己")
     if target["role"] == "admin" and not enabled:
         admin_count = scalar(settings, "SELECT COUNT(1) AS cnt FROM users WHERE role = 'admin' AND enabled = 1", default=0) or 0
         if admin_count <= 1:
@@ -196,6 +198,38 @@ def set_enabled(settings: Settings, user_id: int, enabled: bool, actor: str | No
     except Exception:
         pass
     return {"success": True, "message": "用户状态已更新", "enabled": enabled}
+
+
+def update_user_role(settings: Settings, user_id: int, role: str, actor: str | None = None) -> Dict:
+    target = get_user_by_id(settings, user_id)
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="未找到该用户")
+
+    clean_role = (role or "").strip().lower()
+    if clean_role not in ("admin", "user"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="角色不合法")
+    old_role = str(target.get("role") or "user")
+    if old_role == clean_role:
+        return {"success": True, "message": "用户角色未变化", "role": clean_role}
+    if str(target.get("username") or "") == (actor or "") and clean_role != "admin":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="管理员不能修改自己的管理员角色")
+
+    if old_role == "admin" and clean_role != "admin":
+        admin_count = scalar(settings, "SELECT COUNT(1) AS cnt FROM users WHERE role = 'admin'", default=0) or 0
+        if admin_count <= 1:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="至少保留一个管理员账号")
+
+    now_text = _now_text()
+    execute(settings, "UPDATE users SET role = ?, updated_at = ? WHERE id = ?", (clean_role, now_text, user_id))
+    try:
+        execute(
+            settings,
+            "INSERT INTO users_audit_logs (target_user_id, target_username, action, actor, change_summary, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, target["username"], "set_role", actor or "system", f"修改角色：{old_role} -> {clean_role}", now_text),
+        )
+    except Exception:
+        pass
+    return {"success": True, "message": "用户角色已更新", "role": clean_role}
 
 
 def list_user_audit(settings: Settings, user_id: int):

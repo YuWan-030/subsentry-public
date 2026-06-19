@@ -37,6 +37,18 @@ const RENEW_PRICE_PERIOD_OPTIONS = [
   { label: "季", value: "季" },
   { label: "年", value: "年" },
 ];
+const CUSTOMER_NOTES_MAX_LENGTH = 100;
+const WEBHOOK_URL_RULES = [
+  {
+    validator: (_: unknown, value?: string) => {
+      const cleanValue = String(value || "").trim();
+      if (!cleanValue || cleanValue.startsWith("http://") || cleanValue.startsWith("https://")) {
+        return Promise.resolve();
+      }
+      return Promise.reject(new Error("Webhook 地址必须以 http:// 或 https:// 开头"));
+    },
+  },
+];
 
 function UnitNumberInput({ value, onChange, unit, placeholder }: { value?: number; onChange?: (value: number | null) => void; unit: string; placeholder?: string }) {
   return (
@@ -195,6 +207,7 @@ export default function CustomerDetailPage() {
   const [renewCustomDate, setRenewCustomDate] = useState<Dayjs | null>(null);
   const [editForm] = Form.useForm<EditFormValues>();
   const [renewForm] = Form.useForm<RenewFormValues>();
+  const editNotesValue = Form.useWatch("notes", editForm) || "";
   const auditCacheRef = useRef(new Map<string, CustomerAuditRow[]>());
   const auditActionRef = useRef<string | undefined>(undefined);
 
@@ -363,6 +376,22 @@ export default function CustomerDetailPage() {
         .joined-price-input .ant-input:hover,
         .joined-price-input .ant-input:focus,
         .joined-price-input .ant-select-focused .ant-select-selector { position: relative; z-index: 1; }
+        .customer-notes-textarea {
+          resize: none !important;
+          overflow: hidden !important;
+        }
+        .customer-notes-textarea::-webkit-scrollbar {
+          width: 0;
+          height: 0;
+          display: none;
+        }
+        .customer-notes-count {
+          margin-top: 6px;
+          text-align: right;
+          color: var(--text-sub);
+          font-size: 12px;
+          line-height: 1;
+        }
         .customer-detail-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
         .customer-detail-actions .detail-action-button { border-radius: 12px; }
         .customer-audit-card .ant-card-head { padding: 0 20px; }
@@ -740,14 +769,15 @@ export default function CustomerDetailPage() {
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name="webhook_url" label="Webhook">
+              <Form.Item name="webhook_url" label="Webhook" rules={WEBHOOK_URL_RULES}>
                 <Input placeholder="留空则使用全局默认 Webhook" />
               </Form.Item>
             </Col>
             <Col xs={24}>
-              <Form.Item name="notes" label="备注">
-                <Input.TextArea rows={3} maxLength={500} showCount placeholder="填写客户备注，仅保存在 SubSentry 本地" />
+              <Form.Item name="notes" label="备注" style={{ marginBottom: 0 }}>
+                <Input.TextArea rows={2} maxLength={CUSTOMER_NOTES_MAX_LENGTH} placeholder="填写客户备注，仅保存在 SubSentry 本地" className="customer-notes-textarea" />
               </Form.Item>
+              <div className="customer-notes-count">{String(editNotesValue).length} / {CUSTOMER_NOTES_MAX_LENGTH}</div>
             </Col>
           </Row>
         </Form>

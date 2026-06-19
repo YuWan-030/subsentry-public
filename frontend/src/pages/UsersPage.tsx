@@ -1,9 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import { Button, Card, Drawer, Form, Grid, Input, List, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { DeleteOutlined, EditOutlined, KeyOutlined, SafetyCertificateOutlined, SafetyOutlined, SyncOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, KeyOutlined, SafetyCertificateOutlined, SafetyOutlined, SyncOutlined, UserSwitchOutlined } from "@ant-design/icons";
 import { useAuth } from "../api/auth";
-import { changeUserPassword, createUser, deleteUser, fetchUserAudit, fetchUsers, resetUserPassword, toggleUserEnabled, updateUserNickname, type UserRow } from "../api/users";
+import { createUser, deleteUser, fetchUserAudit, fetchUsers, resetUserPassword, toggleUserEnabled, updateUserNickname, updateUserRole, type UserRow } from "../api/users";
 import { extractErrorMessage, notifyActionError, notifyActionLoading, notifyActionSuccess, notifyActionWarning, notifyDataLoaded } from "../utils/feedback";
 
 const { useBreakpoint } = Grid;
@@ -15,12 +15,12 @@ type UserCreateFormValues = {
   role: "admin" | "user";
 };
 
-type PasswordFormValues = {
-  password: string;
-};
-
 type NicknameFormValues = {
   nickname?: string;
+};
+
+type RoleFormValues = {
+  role: "admin" | "user";
 };
 
 export default function UsersPage() {
@@ -29,11 +29,11 @@ export default function UsersPage() {
   const isMobile = screens.xs === true;
 
   const [userForm] = Form.useForm<UserCreateFormValues>();
-  const [pwdForm] = Form.useForm<PasswordFormValues>();
   const [nicknameForm] = Form.useForm<NicknameFormValues>();
+  const [roleForm] = Form.useForm<RoleFormValues>();
   const [userRows, setUserRows] = useState<UserRow[]>([]);
   const [activeUser, setActiveUser] = useState<UserRow | null>(null);
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [nicknameModalOpen, setNicknameModalOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
@@ -45,7 +45,7 @@ export default function UsersPage() {
   const [auditDrawerOpen, setAuditDrawerOpen] = useState(false);
   const [auditRows, setAuditRows] = useState<any[]>([]);
   const [createSubmitting, setCreateSubmitting] = useState(false);
-  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const [roleSubmitting, setRoleSubmitting] = useState(false);
   const [nicknameSubmitting, setNicknameSubmitting] = useState(false);
 
   const loadData = async (p: number = page, ps: number = pageSize, showSuccess = false) => {
@@ -91,26 +91,27 @@ export default function UsersPage() {
     }
   };
 
-  const submitPasswordChange = async () => {
+  const submitRoleChange = async () => {
     if (!activeUser) {
       return;
     }
     try {
-      const values = await pwdForm.validateFields();
-      setPasswordSubmitting(true);
-      notifyActionLoading("user-password", "修改密码中...");
-      const result = await changeUserPassword(activeUser.id, values.password);
-      notifyActionSuccess("user-password", result.message || "修改密码成功");
-      setPasswordModalOpen(false);
-      pwdForm.resetFields();
+      const values = await roleForm.validateFields();
+      setRoleSubmitting(true);
+      notifyActionLoading("user-role", "修改角色中...");
+      const result = await updateUserRole(activeUser.id, values.role);
+      notifyActionSuccess("user-role", result.message || "用户角色已更新");
+      setRoleModalOpen(false);
+      roleForm.resetFields();
+      await loadData(page, pageSize, false);
     } catch (error: any) {
       if (error?.errorFields) {
-        notifyActionWarning("user-password", "请输入有效的新密码");
+        notifyActionWarning("user-role", "请选择用户角色");
         return;
       }
-      notifyActionError("user-password", extractErrorMessage(error, "修改密码失败"));
+      notifyActionError("user-role", extractErrorMessage(error, "修改角色失败"));
     } finally {
-      setPasswordSubmitting(false);
+      setRoleSubmitting(false);
     }
   };
 
@@ -238,9 +239,9 @@ export default function UsersPage() {
           >
             改经理昵称
           </Button>
-          <Button size="small" onClick={() => { setActiveUser(row); setPasswordModalOpen(true); }}>改密码</Button>
+          <Button size="small" onClick={() => { setActiveUser(row); roleForm.setFieldsValue({ role: row.role }); setRoleModalOpen(true); }}>改角色</Button>
           <Button size="small" onClick={() => void handleResetPassword(row)}>重置密码</Button>
-          <Button size="small" onClick={() => void handleToggleEnabled(row)}>{row.enabled ? "禁用" : "启用"}</Button>
+          <Button size="small" disabled={row.username === user?.username && row.enabled} onClick={() => void handleToggleEnabled(row)}>{row.enabled ? "禁用" : "启用"}</Button>
           <Button size="small" onClick={() => void openAudit(row)}>审计</Button>
           <Popconfirm title="确认删除该用户？" okText="删除" cancelText="取消" onConfirm={() => void handleDeleteUser(row)}>
             <Button danger size="small">删除</Button>
@@ -284,8 +285,9 @@ export default function UsersPage() {
                 <Typography.Text type="secondary">创建于：{item.created_at || "--"}</Typography.Text>
                 <Space wrap>
                   <Button size="small" icon={<EditOutlined />} onClick={() => { setActiveUser(item); nicknameForm.setFieldsValue({ nickname: item.nickname || "" }); setNicknameModalOpen(true); }}>改经理昵称</Button>
-                  <Button size="small" icon={<KeyOutlined />} onClick={() => { setActiveUser(item); setPasswordModalOpen(true); }}>改密码</Button>
-                  <Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => void handleToggleEnabled(item)}>{item.enabled ? "禁用" : "启用"}</Button>
+                  <Button size="small" icon={<UserSwitchOutlined />} onClick={() => { setActiveUser(item); roleForm.setFieldsValue({ role: item.role }); setRoleModalOpen(true); }}>改角色</Button>
+                  <Button size="small" icon={<KeyOutlined />} onClick={() => void handleResetPassword(item)}>重置密码</Button>
+                  <Button size="small" icon={<SafetyCertificateOutlined />} disabled={item.username === user?.username && item.enabled} onClick={() => void handleToggleEnabled(item)}>{item.enabled ? "禁用" : "启用"}</Button>
                   <Button size="small" icon={<SafetyOutlined />} onClick={() => void openAudit(item)}>审计</Button>
                   <Popconfirm title="确认删除该用户？" okText="删除" cancelText="取消" onConfirm={() => void handleDeleteUser(item)}>
                     <Button danger size="small" icon={<DeleteOutlined />}>删除</Button>
@@ -320,10 +322,10 @@ export default function UsersPage() {
         />
       )}
 
-      <Modal open={passwordModalOpen} title={`修改密码${activeUser ? `：${activeUser.username}` : ""}`} onCancel={() => setPasswordModalOpen(false)} onOk={submitPasswordChange} confirmLoading={passwordSubmitting} destroyOnClose>
-        <Form form={pwdForm} layout="vertical">
-          <Form.Item name="password" label="新密码" rules={[{ required: true, message: "请输入新密码" }]}>
-            <Input.Password placeholder="请输入新密码" />
+      <Modal open={roleModalOpen} title={`修改角色${activeUser ? `：${activeUser.username}` : ""}`} onCancel={() => setRoleModalOpen(false)} onOk={submitRoleChange} confirmLoading={roleSubmitting} destroyOnClose>
+        <Form form={roleForm} layout="vertical">
+          <Form.Item name="role" label="角色" rules={[{ required: true, message: "请选择角色" }]}>
+            <Select options={[{ value: "user", label: "普通用户" }, { value: "admin", label: "管理员" }]} />
           </Form.Item>
         </Form>
       </Modal>

@@ -29,7 +29,6 @@ from backend.app.services.users import (
     authenticate_user,
     bind_onauth_user,
     change_own_password,
-    change_password,
     create_user,
     delete_user,
     get_user_by_onauth_sub,
@@ -42,6 +41,7 @@ from backend.app.services.users import (
     unbind_onauth_user,
     update_current_user_profile,
     update_user_nickname,
+    update_user_role,
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -62,10 +62,6 @@ class UserCreateRequest(BaseModel):
     nickname: str | None = None
 
 
-class UserPasswordRequest(BaseModel):
-    password: str
-
-
 class SelfPasswordRequest(BaseModel):
     current_password: str
     new_password: str
@@ -77,6 +73,10 @@ class UserEnabledRequest(BaseModel):
 
 class UserNicknameRequest(BaseModel):
     nickname: str | None = None
+
+
+class UserRoleRequest(BaseModel):
+    role: str
 
 
 class OnAuthStartRequest(BaseModel):
@@ -469,12 +469,6 @@ def remove_user(request: Request, user_id: int, username: str = Depends(require_
     return delete_user(settings, user_id, actor=username)
 
 
-@router.put("/users/{user_id}/password")
-def change_user_password(request: Request, user_id: int, payload: UserPasswordRequest, username: str = Depends(require_admin)):
-    settings: Settings = request.app.state.settings
-    return change_password(settings, user_id, payload.password, actor=username)
-
-
 @router.post("/users/{user_id}/reset-password")
 def reset_user_password(request: Request, user_id: int, username: str = Depends(require_admin)):
     settings: Settings = request.app.state.settings
@@ -491,6 +485,12 @@ def toggle_user_enabled(request: Request, user_id: int, payload: UserEnabledRequ
 def change_user_nickname(request: Request, user_id: int, payload: UserNicknameRequest, username: str = Depends(require_admin)):
     settings: Settings = request.app.state.settings
     return update_user_nickname(settings, user_id, payload.nickname or "", actor=username)
+
+
+@router.put("/users/{user_id}/role")
+def change_user_role(request: Request, user_id: int, payload: UserRoleRequest, username: str = Depends(require_admin)):
+    settings: Settings = request.app.state.settings
+    return update_user_role(settings, user_id, payload.role, actor=username)
 
 
 @router.get("/users/{user_id}/audit")
