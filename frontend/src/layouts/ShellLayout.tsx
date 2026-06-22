@@ -27,6 +27,7 @@ export default function ShellLayout() {
   const location = useLocation();
   const screens = useBreakpoint();
   const isMobile = screens.md === false;
+  const isCompactDesktop = !isMobile && screens.xl === false;
   const displayName = user?.nickname || user?.username || "管理员";
 
   const menuItems = [
@@ -151,9 +152,12 @@ export default function ShellLayout() {
         .apple-main-viewport {
           flex: 1;
           margin-left: ${isMobile ? "0" : "250px"};
-          padding: ${isMobile ? "calc(72px + env(safe-area-inset-top, 0px)) 14px calc(104px + env(safe-area-inset-bottom, 0px)) 14px" : "36px 40px"};
+          padding: ${isMobile ? "calc(72px + env(safe-area-inset-top, 0px)) 14px calc(104px + env(safe-area-inset-bottom, 0px)) 14px" : isCompactDesktop ? "28px 24px" : "36px 40px"};
           background: var(--bg-apple);
           min-height: 100vh;
+          min-width: 0;
+          max-width: 100%;
+          overflow-x: hidden;
           box-sizing: border-box;
         }
         .ant-menu-inline { background: transparent !important; border: none !important; }

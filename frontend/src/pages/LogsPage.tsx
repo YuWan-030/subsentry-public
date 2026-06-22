@@ -66,6 +66,8 @@ function eventLabel(value: string) {
 export default function LogsPage() {
   const screens = useBreakpoint();
   const isMobile = screens.md === false;
+  const isCompactDesktop = !isMobile && screens.xl === false;
+  const useCardList = isMobile || isCompactDesktop;
   const [activityRows, setActivityRows] = useState<ActivityLogRow[]>([]);
   const [notificationRows, setNotificationRows] = useState<NotificationLogRow[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
@@ -250,7 +252,7 @@ export default function LogsPage() {
   );
 
   return (
-    <div>
+    <div style={{ minWidth: 0, overflowX: "hidden" }}>
       <div style={{ marginBottom: 20 }}>
         <Typography.Title level={isMobile ? 4 : 3} style={{ marginBottom: 4, fontWeight: 700 }}>日志中心</Typography.Title>
         <Typography.Text type="secondary">集中查看登录、节点配置、批量操作与通知发送记录。</Typography.Text>
@@ -262,9 +264,9 @@ export default function LogsPage() {
             key: "activity",
             label: "操作审计",
             children: (
-              <Card bordered={false} style={{ borderRadius: 16 }} bodyStyle={{ padding: isMobile ? 12 : 24 }}>
+              <Card bordered={false} style={{ borderRadius: 16 }} bodyStyle={{ padding: useCardList ? 12 : 24 }}>
                 <Space wrap style={{ marginBottom: 16, width: "100%" }}>
-                  <Select value={category} options={activityCategoryOptions} style={{ width: isMobile ? "100%" : 150 }} onChange={(value) => setCategory(value)} />
+                  <Select value={category} options={activityCategoryOptions} style={{ width: useCardList ? "100%" : 150 }} onChange={(value) => setCategory(value)} />
                   <Input
                     allowClear
                     prefix={<SearchOutlined />}
@@ -272,11 +274,11 @@ export default function LogsPage() {
                     value={keyword}
                     onChange={(event) => setKeyword(event.target.value)}
                     onPressEnter={() => void loadActivity(1, activityPageSize, true)}
-                    style={{ width: isMobile ? "100%" : 260 }}
+                    style={{ width: useCardList ? "100%" : 260 }}
                   />
                   <Button icon={<ReloadOutlined />} onClick={() => void loadActivity(1, activityPageSize, true)}>刷新</Button>
                 </Space>
-                {isMobile ? renderActivityList() : (
+                {useCardList ? renderActivityList() : (
                   <Table
                     rowKey="id"
                     loading={activityLoading}
@@ -299,13 +301,13 @@ export default function LogsPage() {
             key: "notifications",
             label: "通知发送",
             children: (
-              <Card bordered={false} style={{ borderRadius: 16 }} bodyStyle={{ padding: isMobile ? 12 : 24 }}>
+              <Card bordered={false} style={{ borderRadius: 16 }} bodyStyle={{ padding: useCardList ? 12 : 24 }}>
                 <Space wrap style={{ marginBottom: 16, width: "100%" }}>
-                  <Select value={notifyStatus} options={STATUS_OPTIONS} style={{ width: isMobile ? "100%" : 140 }} onChange={(value) => setNotifyStatus(value)} />
-                  <Select value={eventType} options={EVENT_OPTIONS} style={{ width: isMobile ? "100%" : 150 }} onChange={(value) => setEventType(value)} />
+                  <Select value={notifyStatus} options={STATUS_OPTIONS} style={{ width: useCardList ? "100%" : 140 }} onChange={(value) => setNotifyStatus(value)} />
+                  <Select value={eventType} options={EVENT_OPTIONS} style={{ width: useCardList ? "100%" : 150 }} onChange={(value) => setEventType(value)} />
                   <Button icon={<ReloadOutlined />} onClick={() => void loadNotifications(1, notificationPageSize, true)}>刷新</Button>
                 </Space>
-                {isMobile ? renderNotificationList() : (
+                {useCardList ? renderNotificationList() : (
                   <Table
                     rowKey="id"
                     loading={notificationLoading}

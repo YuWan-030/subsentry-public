@@ -25,6 +25,8 @@ function formatCurrency(value?: number) {
 export default function FinancePage() {
   const screens = useBreakpoint();
   const isMobile = screens.md === false;
+  const isCompactDesktop = !isMobile && screens.xl === false;
+  const useCardList = isMobile || isCompactDesktop;
   const [rows, setRows] = useState<FinancialLogRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -199,19 +201,19 @@ export default function FinancePage() {
   );
 
   return (
-    <div>
+    <div style={{ minWidth: 0, overflowX: "hidden" }}>
       <div style={{ marginBottom: 20 }}>
         <Typography.Title level={isMobile ? 4 : 3} style={{ marginBottom: 4, fontWeight: 700 }}>财务流水</Typography.Title>
         <Typography.Text type="secondary">查看和维护客户续费产生的收入流水，修改或删除后会刷新总览收入统计。</Typography.Text>
       </div>
 
-      <Card bordered={false} style={{ borderRadius: 16, marginBottom: 16 }} bodyStyle={{ padding: isMobile ? 12 : 20 }}>
-        <Space direction="vertical" size={isMobile ? 12 : 16} style={{ width: "100%" }}>
+      <Card bordered={false} style={{ borderRadius: 16, marginBottom: 16 }} bodyStyle={{ padding: useCardList ? 12 : 20 }}>
+        <Space direction="vertical" size={useCardList ? 12 : 16} style={{ width: "100%" }}>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isMobile ? "1fr 1fr" : "minmax(220px, 1.4fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(280px, 1.4fr) auto auto",
-              gap: isMobile ? 8 : 10,
+              gridTemplateColumns: useCardList ? "1fr 1fr" : "minmax(220px, 1.4fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(280px, 1.4fr) auto auto",
+              gap: useCardList ? 8 : 10,
               alignItems: "center",
             }}
           >
@@ -222,7 +224,7 @@ export default function FinancePage() {
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               onPressEnter={search}
-              style={{ gridColumn: isMobile ? "1 / -1" : undefined }}
+              style={{ gridColumn: useCardList ? "1 / -1" : undefined }}
             />
             <Select
               allowClear
@@ -247,7 +249,7 @@ export default function FinancePage() {
             <RangePicker
               showTime
               inputReadOnly={isMobile}
-              style={{ width: "100%", gridColumn: isMobile ? "1 / -1" : undefined }}
+              style={{ width: "100%", gridColumn: useCardList ? "1 / -1" : undefined }}
               onChange={(values) => {
                 setDateRange(values ? [values[0]?.format("YYYY-MM-DD HH:mm:ss") || "", values[1]?.format("YYYY-MM-DD HH:mm:ss") || ""] : null);
               }}
@@ -259,8 +261,8 @@ export default function FinancePage() {
         </Space>
       </Card>
 
-      <Card bordered={false} style={{ borderRadius: 16 }} bodyStyle={{ padding: isMobile ? 12 : 24 }}>
-        {isMobile ? renderMobileList() : (
+      <Card bordered={false} style={{ borderRadius: 16 }} bodyStyle={{ padding: useCardList ? 12 : 24 }}>
+        {useCardList ? renderMobileList() : (
           <Table
             rowKey="id"
             loading={loading}

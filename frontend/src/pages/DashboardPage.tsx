@@ -29,7 +29,8 @@ export default function DashboardPage() {
   const initialSafariRetryRef = useRef<number | null>(null);
   const firstLoadRef = useRef(true);
   const screens = useBreakpoint();
-  const isMobile = screens.xs === true;
+  const isMobile = screens.md === false;
+  const isCompactDesktop = !isMobile && screens.xl === false;
   const periodLabelMap: Record<DashboardPeriod, string> = {
     today: "今日",
     week: "本周",
@@ -180,7 +181,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div>
+    <div style={{ minWidth: 0, overflowX: "hidden" }}>
       <style>{`
         .apple-fluid-card {
           background: var(--glass-bg) !important;
@@ -241,14 +242,14 @@ export default function DashboardPage() {
       </div>
 
       <Row gutter={isMobile ? [10, 10] : [16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={12} md={6}>
+        <Col xs={12} lg={isCompactDesktop ? 12 : 6}>
           <Card bordered={false} className="apple-fluid-card" bodyStyle={{ padding: isMobile ? 12 : 20, textAlign: "center" }}>
             <div className="apple-stat-label">总客户资产数量</div>
             <div className="apple-stat-val">{statusLoading ? "..." : formatNumber(summary?.total_count ?? 0)}</div>
             <div className="apple-stat-indicator" style={{ backgroundColor: "var(--apple-blue)" }} />
           </Card>
         </Col>
-        <Col xs={12} md={6}>
+        <Col xs={12} lg={isCompactDesktop ? 12 : 6}>
           <Card bordered={false} className="apple-fluid-card" bodyStyle={{ padding: isMobile ? 12 : 20, textAlign: "center" }}>
             <div className="apple-stat-label">正常运行服务中</div>
             <div className="apple-stat-val" style={{ color: "var(--status-success)" }}>
@@ -257,14 +258,14 @@ export default function DashboardPage() {
             <div className="apple-stat-indicator" style={{ backgroundColor: "var(--status-success)" }} />
           </Card>
         </Col>
-        <Col xs={12} md={6}>
+        <Col xs={12} lg={isCompactDesktop ? 12 : 6}>
           <Card bordered={false} className="apple-fluid-card" bodyStyle={{ padding: isMobile ? 12 : 20, textAlign: "center" }}>
             <div className="apple-stat-label">7天内到期临期</div>
             <div className="apple-stat-val" style={{ color: "var(--status-warning)" }}>{statusLoading ? "..." : formatNumber(summary?.warning_count ?? 0)}</div>
             <div className="apple-stat-indicator" style={{ backgroundColor: "var(--status-warning)" }} />
           </Card>
         </Col>
-        <Col xs={12} md={6}>
+        <Col xs={12} lg={isCompactDesktop ? 12 : 6}>
           <Card bordered={false} className="apple-fluid-card" bodyStyle={{ padding: isMobile ? 12 : 20, textAlign: "center" }}>
             <div className="apple-stat-label">{periodLabel}营收流水预测</div>
             <div className="apple-stat-val" style={{ color: "var(--status-danger)", fontSize: isMobile ? "16px" : "26px" }}>
@@ -296,7 +297,7 @@ export default function DashboardPage() {
         bordered={false}
         bodyStyle={{ padding: isMobile ? "4px 8px" : "8px 16px" }}
       >
-        <Table rowKey="month" size={isMobile ? "small" : "middle"} loading={incomeLoading} pagination={false} columns={incomeColumns} dataSource={series} scroll={{ x: "max-content" }} />
+        <Table rowKey="month" size={isMobile || isCompactDesktop ? "small" : "middle"} loading={incomeLoading} pagination={false} columns={incomeColumns} dataSource={series} scroll={isMobile ? { x: 520 } : undefined} />
       </Card>
     </div>
   );

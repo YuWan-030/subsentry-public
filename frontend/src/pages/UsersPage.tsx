@@ -26,7 +26,9 @@ type RoleFormValues = {
 export default function UsersPage() {
   const { user } = useAuth();
   const screens = useBreakpoint();
-  const isMobile = screens.xs === true;
+  const isMobile = screens.md === false;
+  const isCompactDesktop = !isMobile && screens.xl === false;
+  const useCardList = isMobile || isCompactDesktop;
 
   const [userForm] = Form.useForm<UserCreateFormValues>();
   const [nicknameForm] = Form.useForm<NicknameFormValues>();
@@ -252,7 +254,7 @@ export default function UsersPage() {
   ];
 
   return (
-    <div>
+    <div style={{ minWidth: 0, overflowX: "hidden" }}>
       <div style={{ marginBottom: 20 }}>
         <Typography.Title level={isMobile ? 4 : 3} style={{ marginBottom: 4, fontWeight: 700 }}>用户管理</Typography.Title>
         <Typography.Paragraph style={{ marginBottom: 0, color: "#64748b", fontSize: isMobile ? 12 : 14 }}>
@@ -262,14 +264,14 @@ export default function UsersPage() {
 
       <Card bordered={false} style={{ marginBottom: 16, borderRadius: 16 }}>
         <Space wrap style={{ width: "100%" }}>
-          <Input.Search allowClear placeholder="按用户名搜索" value={keyword} onChange={(e) => setKeyword(e.target.value)} onSearch={() => void loadData(1, pageSize, true)} style={{ width: isMobile ? "100%" : 220 }} />
-          <Select allowClear placeholder="按角色筛选" value={roleFilter} onChange={(v) => { setRoleFilter(v || undefined); void loadData(1, pageSize, true); }} options={[{ value: "admin", label: "管理员" }, { value: "user", label: "普通用户" }]} style={{ width: isMobile ? "100%" : 140 }} />
+          <Input.Search allowClear placeholder="按用户名搜索" value={keyword} onChange={(e) => setKeyword(e.target.value)} onSearch={() => void loadData(1, pageSize, true)} style={{ width: useCardList ? "100%" : 220 }} />
+          <Select allowClear placeholder="按角色筛选" value={roleFilter} onChange={(v) => { setRoleFilter(v || undefined); void loadData(1, pageSize, true); }} options={[{ value: "admin", label: "管理员" }, { value: "user", label: "普通用户" }]} style={{ width: useCardList ? "calc(100% - 56px)" : 140 }} />
           <Button type="primary" onClick={() => { userForm.resetFields(); userForm.setFieldsValue({ role: "user" }); setCreateOpen(true); }}>新增用户</Button>
           <Button icon={<SyncOutlined spin={loading} />} onClick={() => void loadData(1, pageSize, true)} />
         </Space>
       </Card>
 
-      {isMobile ? (
+      {useCardList ? (
         <List
           loading={loading}
           dataSource={userRows}
