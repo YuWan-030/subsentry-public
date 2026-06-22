@@ -46,6 +46,7 @@ class CustomerPayload(BaseModel):
 class RenewPayload(BaseModel):
     renew_days: int
     renew_price: str | None = None
+    reset_traffic: bool = False
 
 
 class BulkAssignManagerPayload(BaseModel):
@@ -115,7 +116,7 @@ def bulk_update(request: Request, payload: BulkUpdateFieldsPayload, username: st
 def renew(request: Request, customer_id: str, payload: RenewPayload, username: str = Depends(require_login)):
     settings: Settings = request.app.state.settings
     actor_role = str(request.session.get(SESSION_ROLE_KEY) or "user")
-    result = process_customer_renew(settings, customer_id, payload.renew_days, payload.renew_price or "", actor=username, actor_role=actor_role)
+    result = process_customer_renew(settings, customer_id, payload.renew_days, payload.renew_price or "", actor=username, actor_role=actor_role, reset_traffic=payload.reset_traffic)
     clear_dashboard_cache()
     return result
 

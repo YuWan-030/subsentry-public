@@ -111,6 +111,7 @@ export type CustomerPayload = {
 export type RenewPayload = {
   renew_days: number;
   renew_price?: string;
+  reset_traffic?: boolean;
 };
 
 export type BulkUpdateFieldsPayload = {
@@ -152,7 +153,7 @@ export async function deleteCustomer(customerId: string) {
 
 export async function renewCustomer(customerId: string, payload: RenewPayload) {
   const response = await api.post(`/api/v1/customers/${customerId}/renew`, payload);
-  return response.data as { success: boolean; message: string; new_expiry: string; renew_price: string };
+  return response.data as { success: boolean; message: string; new_expiry: string; renew_price: string; reset_traffic?: boolean; reset_traffic_message?: string };
 }
 
 export async function resetCustomerTraffic(customerId: string) {

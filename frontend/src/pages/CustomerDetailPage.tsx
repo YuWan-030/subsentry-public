@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Grid, Input, InputNumber, List, Modal, Popconfirm, Row, Select, Space, Switch, Table, Tag, Typography } from "antd";
+import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Grid, Input, InputNumber, List, Modal, Popconfirm, Radio, Row, Select, Space, Switch, Table, Tag, Typography } from "antd";
 import type { Dayjs } from "dayjs";
 import {
   fetchCustomerAuditByAction,
@@ -81,6 +81,7 @@ type EditFormValues = {
 
 type RenewFormValues = {
   renew_price?: string;
+  reset_traffic?: boolean;
 };
 
 const AUDIT_ACTIONS: Array<{ label: string; value?: string }> = [
@@ -473,7 +474,7 @@ export default function CustomerDetailPage() {
             type="primary"
             className="detail-action-button detail-action-renew"
             onClick={() => {
-              renewForm.setFieldsValue({ renew_price: customer.renew_price });
+              renewForm.setFieldsValue({ renew_price: customer.renew_price, reset_traffic: false });
               setRenewMode(DEFAULT_EXPIRY_MODE);
               setRenewDurationDays(30);
               setRenewCustomDate(null);
@@ -794,7 +795,7 @@ export default function CustomerDetailPage() {
           try {
             setRenewSubmitting(true);
             notifyActionLoading("customer-renew", "客户续费中...");
-            const result = await renewCustomer(customerId, { renew_days: renewDays, renew_price: values.renew_price });
+            const result = await renewCustomer(customerId, { renew_days: renewDays, renew_price: values.renew_price, reset_traffic: values.reset_traffic === true });
             notifyActionSuccess("customer-renew", result.message || "续费成功");
             setRenewOpen(false);
             await loadData(false, true);
@@ -830,6 +831,16 @@ export default function CustomerDetailPage() {
             当前客户到期日：{customer.expiry_display || "-"}，续费基准：{renewBaseDate.format("YYYY-MM-DD")}。
           </Typography.Text>
           <Form.Item name="renew_price" label="续费价格"><Input /></Form.Item>
+          <Form.Item name="reset_traffic" label="是否重置流量" initialValue={false}>
+            <Radio.Group
+              optionType="button"
+              buttonStyle="solid"
+              options={[
+                { label: "不重置", value: false },
+                { label: "同时重置", value: true },
+              ]}
+            />
+          </Form.Item>
         </Form>
       </Modal>
 

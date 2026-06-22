@@ -1034,7 +1034,7 @@ def customer_audit_logs(settings: Settings, customer_id: str, *, action: str = "
         tuple(params),
     )
 
-def process_customer_renew(settings: Settings, customer_id: str, days_to_add: int, new_price: str, actor: str, actor_role: str = "admin") -> Dict[str, Any]:
+def process_customer_renew(settings: Settings, customer_id: str, days_to_add: int, new_price: str, actor: str, actor_role: str = "admin", reset_traffic: bool = False) -> Dict[str, Any]:
     node_id, remote_email = _split_customer_id(customer_id)
     node = _require_node(settings, node_id)
     remote_detail = _safe_remote_detail(node, remote_email)
@@ -1140,11 +1140,14 @@ def process_customer_renew(settings: Settings, customer_id: str, days_to_add: in
             "inbound_ids": current_view.get("inbound_ids", []),
         },
     )
+    reset_result = reset_customer_traffic(settings, customer_id, actor=actor, actor_role=actor_role) if reset_traffic else None
     return {
         "success": True,
         "message": f"客户 [{current_view['name']}] 续期成功，新到期时间：{new_expiry_display}",
         "new_expiry": new_expiry_display,
         "renew_price": final_price,
+        "reset_traffic": bool(reset_traffic),
+        "reset_traffic_message": (reset_result or {}).get("message", ""),
     }
 
 
