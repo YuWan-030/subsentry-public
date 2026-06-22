@@ -268,7 +268,7 @@ export default function CustomersPage() {
       renew_price_period: "月",
       total_gb: 0,
       traffic_multiplier: 5,
-      limit_ip: 0,
+      limit_ip: 1,
     });
     setCurrentInboundOptions([]);
     setExpiryMode(DEFAULT_EXPIRY_MODE);
@@ -340,7 +340,7 @@ export default function CustomersPage() {
       inbound_ids: values.inbound_ids,
       total_gb: values.total_gb,
       traffic_multiplier: values.traffic_multiplier,
-      limit_ip: values.limit_ip,
+      limit_ip: values.limit_ip ?? 1,
       ...buildExpiryPayload(expiryMode, durationDays, customExpiryDate),
     };
     try {
@@ -867,7 +867,7 @@ export default function CustomersPage() {
                     <UnitNumberInput unit="倍" placeholder="5 表示按 5 倍扣减" />
                   </Form.Item>
                   <Form.Item name="limit_ip" noStyle>
-                    <UnitNumberInput unit="IP" placeholder="0 表示不限制 IP" />
+                    <UnitNumberInput unit="IP" placeholder="默认 1，0 表示不限制 IP" />
                   </Form.Item>
                 </Space>
               </Form.Item>

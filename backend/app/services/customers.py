@@ -710,6 +710,7 @@ def _prepare_create_payload(settings: Settings, payload: Dict[str, Any]) -> tupl
     node_id = payload.get("node_id")
     inbound_ids = [int(x) for x in (payload.get("inbound_ids") or [])]
     total_gb = payload.get("total_gb")
+    limit_ip = int(payload.get("limit_ip") if payload.get("limit_ip") is not None else 1)
     expiry_date = _resolve_expiry_date_text(payload)
 
     if not name:
@@ -726,7 +727,7 @@ def _prepare_create_payload(settings: Settings, payload: Dict[str, Any]) -> tupl
         "totalGB": _business_gb_to_remote_bytes(total_gb, traffic_multiplier),
         "expiryTime": expiry_ms_from_date(expiry_date),
         "enable": bool(payload.get("enable", True)),
-        "limitIp": int(payload.get("limit_ip") or 0),
+        "limitIp": limit_ip,
         "tgId": int(payload.get("tg_id") or 0),
     }
     profile_payload = {
